@@ -131,7 +131,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             )}
                         </div>
 
-                        <button className="relative text-slate-400 hover:text-slate-600 transition-colors">
+                        <button 
+                            onClick={() => navigate("/notifications")}
+                            className="relative text-slate-400 hover:text-slate-600 transition-colors"
+                        >
                             <Bell size={20} />
                             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
                         </button>

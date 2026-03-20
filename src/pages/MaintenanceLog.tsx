@@ -5,10 +5,23 @@ import {
     X
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useState, useRef } from "react"
 import MainLayout from "../layouts/MainLayout"
 
 export default function MaintenanceLog() {
     const navigate = useNavigate()
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)])
+        }
+    }
+
+    const removeFile = (index: number) => {
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+    }
 
     return (
         <MainLayout>
@@ -71,9 +84,20 @@ export default function MaintenanceLog() {
                     </div>
 
                     {/* Upload Photos */}
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                         <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Upload Photos (Optional)</label>
-                        <div className="border-2 border-dashed border-slate-100 rounded-3xl p-10 flex flex-col items-center justify-center gap-4 hover:border-orange-100 hover:bg-orange-50/10 transition-all cursor-pointer group">
+                        <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                        />
+                        <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="border-2 border-dashed border-slate-100 rounded-3xl p-10 flex flex-col items-center justify-center gap-4 hover:border-orange-100 hover:bg-orange-50/10 transition-all cursor-pointer group"
+                        >
                             <div className="bg-slate-50 p-4 rounded-full group-hover:bg-white group-hover:shadow-lg transition-all">
                                 <Upload className="text-slate-300 group-hover:text-orange-500" size={32} />
                             </div>
@@ -82,6 +106,19 @@ export default function MaintenanceLog() {
                                 <p className="text-[10px] text-slate-300 mt-1 font-bold">PNG, JPG up to 10MB</p>
                             </div>
                         </div>
+
+                        {selectedFiles.length > 0 && (
+                            <div className="flex flex-wrap gap-3 mt-4">
+                                {selectedFiles.map((file, index) => (
+                                    <div key={index} className="flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-xl text-xs font-bold border border-orange-100">
+                                        <span className="truncate max-w-[150px]">{file.name}</span>
+                                        <button onClick={(e) => { e.stopPropagation(); removeFile(index); }}>
+                                            <X size={14} className="hover:text-orange-800" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Form Actions */}

@@ -1,53 +1,60 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import Login from "./pages/Login"
-import Dashboard from "./pages/Dashboard"
-import Notifications from "./pages/Notifications"
-import FleetManagement from "./pages/FleetManagement"
-import FleetDetail from "./pages/FleetDetail"
-import RideMonitoring from "./pages/RideMonitoring"
-import RideDetail from "./pages/RideDetail"
-import MaintenanceHistory from "./pages/MaintenanceHistory"
-import MaintenanceLog from "./pages/MaintenanceLog"
-import MaintenanceDetail from "./pages/MaintenanceDetail"
-import BookingControl from "./pages/BookingControl"
-import UserSupport from "./pages/UserSupport"
-import ComplaintDetail from "./pages/ComplaintDetail"
-import Reports from "./pages/Reports"
-import Settings from "./pages/Settings"
+import { lazy, Suspense } from "react"
 
+// Lazy load components
+const Login = lazy(() => import("./pages/Login"))
+const Dashboard = lazy(() => import("./pages/Dashboard"))
+const Notifications = lazy(() => import("./pages/Notifications"))
+const FleetManagement = lazy(() => import("./pages/FleetManagement"))
+const FleetDetail = lazy(() => import("./pages/FleetDetail"))
+const RideMonitoring = lazy(() => import("./pages/RideMonitoring"))
+const RideDetail = lazy(() => import("./pages/RideDetail"))
+const MaintenanceHistory = lazy(() => import("./pages/MaintenanceHistory"))
+const MaintenanceLog = lazy(() => import("./pages/MaintenanceLog"))
+const MaintenanceDetail = lazy(() => import("./pages/MaintenanceDetail"))
+const BookingControl = lazy(() => import("./pages/BookingControl"))
+const UserSupport = lazy(() => import("./pages/UserSupport"))
+const ComplaintDetail = lazy(() => import("./pages/ComplaintDetail"))
+const Reports = lazy(() => import("./pages/Reports"))
+const Settings = lazy(() => import("./pages/Settings"))
+const AddVehicle = lazy(() => import("./pages/AddVehicle"))
 
-
+// Loading component
+const PageLoader = () => (
+    <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
+    </div>
+)
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/booking" element={<BookingControl />} />
-        <Route path="/support" element={<UserSupport />} />
-        <Route path="/support/detail" element={<ComplaintDetail />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/settings" element={<Settings />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/booking" element={<BookingControl />} />
+          <Route path="/support" element={<UserSupport />} />
+          <Route path="/support/detail" element={<ComplaintDetail />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/settings" element={<Settings />} />
 
+          {/* Fleet Management */}
+          <Route path="/fleet" element={<FleetManagement />} />
+          <Route path="/fleet/details" element={<FleetDetail />} />
+          <Route path="/add-vehicle" element={<AddVehicle />} />
 
+          {/* Ride Monitoring */}
+          <Route path="/ride-monitoring" element={<RideMonitoring />} />
+          <Route path="/ride/details" element={<RideDetail />} />
 
-
-
-        {/* Fleet Management */}
-        <Route path="/fleet" element={<FleetManagement />} />
-        <Route path="/fleet/details" element={<FleetDetail />} />
-
-        {/* Ride Monitoring */}
-        <Route path="/ride-monitoring" element={<RideMonitoring />} />
-        <Route path="/ride/details" element={<RideDetail />} />
-
-        {/* Maintenance */}
-        <Route path="/maintenance" element={<MaintenanceHistory />} />
-        <Route path="/maintenance/new" element={<MaintenanceLog />} />
-        <Route path="/maintenance/details" element={<MaintenanceDetail />} />
-      </Routes>
+          {/* Maintenance */}
+          <Route path="/maintenance" element={<MaintenanceHistory />} />
+          <Route path="/maintenance/new" element={<MaintenanceLog />} />
+          <Route path="/maintenance/details" element={<MaintenanceDetail />} />
+        </Routes>
+      </Suspense>
     </Router>
   )
 }

@@ -1,5 +1,6 @@
 import { Search, Plus } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 
 const logs = [
@@ -34,6 +35,16 @@ const logs = [
 
 export default function MaintenanceHistory() {
     const navigate = useNavigate()
+    const [searchQuery, setSearchQuery] = useState("")
+
+    const filteredLogs = logs.filter((log) => {
+        const query = searchQuery.toLowerCase()
+        return (
+            log.id.toLowerCase().includes(query) ||
+            log.vehicleId.toLowerCase().includes(query) ||
+            log.issueType.toLowerCase().includes(query)
+        )
+    })
 
     return (
         <MainLayout>
@@ -62,6 +73,8 @@ export default function MaintenanceHistory() {
                         </div>
                         <input
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search by Log ID, Vehicle ID, or Issue Type..."
                             className="w-full pl-14 pr-6 py-3.5 bg-white text-[14px] focus:outline-none font-medium text-slate-700 placeholder:text-slate-300 placeholder:font-normal"
                         />
@@ -85,7 +98,7 @@ export default function MaintenanceHistory() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {logs.map((log) => (
+                                {filteredLogs.map((log) => (
                                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-5">
                                             <span className="text-[14px] font-bold text-slate-800">{log.id}</span>

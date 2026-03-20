@@ -21,7 +21,7 @@ export default function FleetDetail() {
                 <div className="flex items-center justify-between">
                     <div className="space-y-4">
                         <button
-                            onClick={() => navigate("/dashboard")}
+                            onClick={() => navigate("/fleet")}
                             className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium"
                         >
                             <ArrowLeft size={16} />
@@ -33,7 +33,10 @@ export default function FleetDetail() {
                         </div>
                     </div>
                     <div className="flex gap-4">
-                        <button className="px-6 py-3 border-2 border-orange-600 text-orange-600 font-bold rounded-xl hover:bg-orange-50 transition-all text-sm">
+                        <button 
+                            onClick={() => navigate('/maintenance/new')}
+                            className="px-6 py-3 border-2 border-orange-600 text-orange-600 font-bold rounded-xl hover:bg-orange-50 transition-all text-sm"
+                        >
                             Report Issue
                         </button>
                         <button className="px-6 py-3 bg-orange-600 shadow-lg shadow-orange-100 text-white font-bold rounded-xl hover:bg-orange-700 transition-all text-sm">

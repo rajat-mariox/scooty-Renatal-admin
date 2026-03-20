@@ -1,5 +1,6 @@
 import { Search } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 
 export default function UserSupport() {
@@ -24,6 +25,18 @@ export default function UserSupport() {
             status: "Resolved"
         },
     ]
+    
+    const [searchQuery, setSearchQuery] = useState("")
+
+    const filteredComplaints = complaints.filter((c) => {
+        const query = searchQuery.toLowerCase()
+        return (
+            c.id.toLowerCase().includes(query) ||
+            c.user.toLowerCase().includes(query) ||
+            c.issue.toLowerCase().includes(query) ||
+            c.status.toLowerCase().includes(query)
+        )
+    })
 
     return (
         <MainLayout>
@@ -44,6 +57,8 @@ export default function UserSupport() {
                             </div>
                             <input
                                 type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search by Complaint ID, User, or Issue..."
                                 className="w-full pl-14 pr-6 py-3.5 bg-white text-[14px] focus:outline-none font-medium text-slate-700 placeholder:text-slate-300 placeholder:font-normal"
                             />
@@ -71,7 +86,7 @@ export default function UserSupport() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {complaints.map((complaint) => (
+                                {filteredComplaints.map((complaint) => (
                                     <tr key={complaint.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-5">
                                             <span className="text-[14px] font-bold text-slate-800">{complaint.id}</span>

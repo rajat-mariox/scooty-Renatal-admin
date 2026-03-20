@@ -139,7 +139,7 @@ export default function ComplaintDetail() {
 
             {/* Escalate Modal */}
             {isEscalateModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 animate-in fade-in duration-200">
                     <div className="bg-white rounded-[1.5rem] w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center sm:text-left">
                         <h3 className="text-[18px] font-bold text-slate-900 mb-4">Escalate Complaint</h3>
                         <p className="text-slate-500 font-medium text-[15px] leading-relaxed mb-8">
@@ -165,7 +165,7 @@ export default function ComplaintDetail() {
 
             {/* Resolve Modal */}
             {isResolveModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 animate-in fade-in duration-200">
                     <div className="bg-white rounded-[1.5rem] w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center sm:text-left">
                         <h3 className="text-[18px] font-bold text-slate-900 mb-4">Resolve Complaint</h3>
                         <p className="text-slate-500 font-medium text-[15px] leading-relaxed mb-8">

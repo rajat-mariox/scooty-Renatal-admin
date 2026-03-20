@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'https://scooty-rental-apis.vercel.app';
+export const API_BASE_URL = 'https://scooty-rental-apis.vercel.app/v1/api';
 
 export const API_ENDPOINTS = {
 

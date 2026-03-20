@@ -2,7 +2,8 @@ import {
     Search,
     Filter,
     MoreVertical,
-    ChevronDown
+    ChevronDown,
+    Plus
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
@@ -10,15 +11,22 @@ import { useState, useEffect, useRef } from "react"
 
 export default function FleetManagement() {
     const navigate = useNavigate()
+    const [searchQuery, setSearchQuery] = useState("")
+    const [statusFilter, setStatusFilter] = useState("All")
+    const [isFilterOpen, setIsFilterOpen] = useState(false)
     const [openMenuId, setOpenMenuId] = useState<string | null>(null)
     const [modalAction, setModalAction] = useState<{ type: string, text: string } | null>(null)
     const menuRef = useRef<HTMLDivElement>(null)
+    const filterRef = useRef<HTMLDivElement>(null)
 
-    // Close menu on click outside
+    // Close menu/filter on click outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setOpenMenuId(null)
+            }
+            if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+                setIsFilterOpen(false)
             }
         }
         document.addEventListener("mousedown", handleClickOutside)
@@ -33,6 +41,18 @@ export default function FleetManagement() {
         { id: "SC005", model: "Ola S1 Air", battery: 92, status: "Active", location: "Station A - Bay 1", lastRide: "5 mins ago" },
         { id: "SC006", model: "Simple One", battery: 68, status: "Active", location: "Station A - Bay 5", lastRide: "30 mins ago" },
     ]
+
+    const filteredVehicles = vehicles.filter((v) => {
+        const query = searchQuery.toLowerCase()
+        const matchesSearch = (
+            v.id.toLowerCase().includes(query) ||
+            v.model.toLowerCase().includes(query) ||
+            v.location.toLowerCase().includes(query)
+        )
+        const matchesStatus = statusFilter === "All" || v.status === statusFilter
+        
+        return matchesSearch && matchesStatus
+    })
 
     return (
         <MainLayout>
@@ -50,20 +70,54 @@ export default function FleetManagement() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                         <input
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search by ID, model, or registration.."
                             className="w-full bg-white border border-slate-100 rounded-xl pl-12 pr-6 py-2.5 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-orange-200 transition-all placeholder:text-slate-300"
                         />
                     </div>
                     <div className="flex items-center gap-4">
-                        <button className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-xl transition-all">
-                            <Filter size={20} />
-                        </button>
+                        <div className="relative" ref={filterRef}>
+                            <button 
+                                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                className={`p-2.5 rounded-xl transition-all border ${isFilterOpen || statusFilter !== 'All' ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-transparent text-slate-400 hover:bg-slate-50'}`}
+                            >
+                                <Filter size={20} />
+                            </button>
+
+                            {isFilterOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 overflow-hidden shadow-orange-500/5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="px-5 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">
+                                        Filter Status
+                                    </div>
+                                    {["All", "Active", "In Ride", "Charging", "Maintenance"].map((status) => (
+                                        <button
+                                            key={status}
+                                            onClick={() => {
+                                                setStatusFilter(status);
+                                                setIsFilterOpen(false);
+                                            }}
+                                            className={`w-full text-left px-5 py-2.5 text-xs font-bold transition-all ${statusFilter === status ? 'text-orange-600 bg-orange-50' : 'text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            {status}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <div className="relative group">
                             <button className="flex items-center gap-8 px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all">
                                 Station Admin
                                 <ChevronDown size={14} className="text-slate-400" />
                             </button>
                         </div>
+                        <button
+                            onClick={() => navigate('/add-vehicle')}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-[#FF6A1F] text-white rounded-xl text-sm font-bold shadow-sm shadow-orange-100 hover:bg-orange-600 transition-all"
+                        >
+                            <Plus size={16} />
+                            Add Vehicle
+                        </button>
                     </div>
                 </div>
 
@@ -82,7 +136,7 @@ export default function FleetManagement() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50/50">
-                            {vehicles.map((v) => (
+                            {filteredVehicles.map((v) => (
                                 <tr
                                     key={v.id}
                                     onClick={() => navigate("/fleet/details")}
@@ -194,7 +248,7 @@ export default function FleetManagement() {
 
                 {/* Confirmation Modal */}
                 {modalAction && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 animate-in fade-in duration-300">
                         <div className="bg-white rounded-[2.5rem] shadow-2xl p-10 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
                             <h3 className="text-sm font-extrabold text-[#1E293B] mb-2">Confirm Action</h3>
                             <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">

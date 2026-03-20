@@ -8,7 +8,7 @@ import MainLayout from "../layouts/MainLayout"
 
 export default function MaintenanceDetail() {
     const navigate = useNavigate()
-    const [currentStatus] = useState<'Pending' | 'In Progress' | 'Completed'>('In Progress')
+    const [currentStatus, setCurrentStatus] = useState<'Pending' | 'In Progress' | 'Completed'>('In Progress')
 
     const currentData = {
         id: "M001",
@@ -85,10 +85,16 @@ export default function MaintenanceDetail() {
                             </div>
 
                             <div className="space-y-4">
-                                <button className="w-full py-3.5 border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold text-[14px] hover:bg-orange-50 transition-all">
+                                <button 
+                                    onClick={() => setCurrentStatus(currentStatus === 'Pending' ? 'In Progress' : 'Pending')}
+                                    className="w-full py-3.5 border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold text-[14px] hover:bg-orange-50 transition-all"
+                                >
                                     Update Status
                                 </button>
-                                <button className="w-full py-3.5 bg-[#FF6A1F] text-white font-bold text-[14px] rounded-xl hover:bg-orange-600 transition-all">
+                                <button 
+                                    onClick={() => setCurrentStatus('Completed')}
+                                    className="w-full py-3.5 bg-[#FF6A1F] text-white font-bold text-[14px] rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-100"
+                                >
                                     Mark as Completed
                                 </button>
                             </div>

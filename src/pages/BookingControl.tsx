@@ -33,8 +33,35 @@ const bookings = [
 ]
 
 export default function BookingControl() {
-    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
-    const [isApproveModalOpen, setIsApproveModalOpen] = useState(false)
+    const [bookingList, setBookingList] = useState(bookings)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
+    const [modalType, setModalType] = useState<'approve' | 'cancel' | null>(null)
+
+    const filteredBookings = bookingList.filter((booking) => {
+        const query = searchQuery.toLowerCase()
+        return (
+            booking.id.toLowerCase().includes(query) ||
+            booking.user.toLowerCase().includes(query) ||
+            booking.status.toLowerCase().includes(query)
+        )
+    })
+
+    const handleAction = (id: string, type: 'approve' | 'cancel') => {
+        setBookingList(prev => prev.map(b => {
+            if (b.id === id) {
+                return { 
+                    ...b, 
+                    status: type === 'approve' ? 'Confirmed' : 'Cancelled',
+                    payment: type === 'approve' ? 'Paid' : b.payment,
+                    vehicle: type === 'approve' && b.vehicle === 'Not Assigned' ? 'SC004' : b.vehicle
+                }
+            }
+            return b
+        }))
+        setModalType(null)
+        setSelectedBookingId(null)
+    }
 
     return (
         <MainLayout>
@@ -54,6 +81,8 @@ export default function BookingControl() {
                         </div>
                         <input
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search by Booking ID or User name..."
                             className="w-full pl-16 pr-6 py-4 bg-white text-[15px] focus:outline-none font-medium text-slate-700 placeholder:text-slate-300 placeholder:font-normal"
                         />
@@ -76,7 +105,7 @@ export default function BookingControl() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100/50">
-                                {bookings.map((booking) => (
+                                {filteredBookings.map((booking) => (
                                     <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-5">
                                             <span className="text-[14px] font-bold text-slate-900">{booking.id}</span>
@@ -114,7 +143,10 @@ export default function BookingControl() {
                                             <div className="flex gap-3">
                                                 {booking.status === 'Pending' && (
                                                     <button
-                                                        onClick={() => setIsApproveModalOpen(true)}
+                                                        onClick={() => {
+                                                            setSelectedBookingId(booking.id)
+                                                            setModalType('approve')
+                                                        }}
                                                         className="px-4 py-1.5 bg-[#00D362] hover:bg-emerald-600 text-white text-[12px] font-bold rounded-full transition-all shadow-sm hover:shadow-md active:scale-95"
                                                     >
                                                         Approve
@@ -122,7 +154,10 @@ export default function BookingControl() {
                                                 )}
                                                 {booking.status !== 'Cancelled' && (
                                                     <button
-                                                        onClick={() => setIsCancelModalOpen(true)}
+                                                        onClick={() => {
+                                                            setSelectedBookingId(booking.id)
+                                                            setModalType('cancel')
+                                                        }}
                                                         className="px-4 py-1.5 bg-[#FF3B30] hover:bg-rose-600 text-white text-[12px] font-bold rounded-full transition-all shadow-sm hover:shadow-md active:scale-95"
                                                     >
                                                         Cancel
@@ -138,24 +173,27 @@ export default function BookingControl() {
                 </div>
 
                 {/* Cancel Booking Modal */}
-                {isCancelModalOpen && (
+                {modalType === 'cancel' && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 animate-in fade-in duration-300">
                         <div className="bg-white w-full max-w-xl rounded-[2.5rem] p-12 shadow-2xl shadow-slate-900/40 transform animate-in zoom-in-95 duration-300">
                             <h2 className="text-[20px] font-bold text-slate-900 mb-6">Cancel Booking</h2>
 
                             <p className="text-slate-500 font-medium text-[16px] mb-12 leading-relaxed">
-                                Are you sure you want to cancel this booking?
+                                Are you sure you want to cancel booking <span className="font-bold text-slate-800">{selectedBookingId}</span>?
                             </p>
 
                             <div className="flex items-center justify-end gap-10">
                                 <button
-                                    onClick={() => setIsCancelModalOpen(false)}
+                                    onClick={() => {
+                                        setModalType(null)
+                                        setSelectedBookingId(null)
+                                    }}
                                     className="text-[14px] font-bold text-slate-600 hover:text-slate-900 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={() => setIsCancelModalOpen(false)}
+                                    onClick={() => selectedBookingId && handleAction(selectedBookingId, 'cancel')}
                                     className="px-8 py-4 bg-[#FF3B30] text-white text-[14px] font-bold rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100"
                                 >
                                     Cancel Booking
@@ -166,24 +204,27 @@ export default function BookingControl() {
                 )}
 
                 {/* Approve Booking Modal */}
-                {isApproveModalOpen && (
+                {modalType === 'approve' && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 animate-in fade-in duration-300">
                         <div className="bg-white w-full max-w-xl rounded-[2.5rem] p-12 shadow-2xl shadow-slate-900/40 transform animate-in zoom-in-95 duration-300">
                             <h2 className="text-[20px] font-bold text-slate-900 mb-6">Approve Booking</h2>
 
                             <p className="text-slate-500 font-medium text-[16px] mb-12 leading-relaxed">
-                                Are you sure you want to confirm this booking?
+                                Are you sure you want to confirm booking <span className="font-bold text-slate-800">{selectedBookingId}</span>?
                             </p>
 
                             <div className="flex items-center justify-end gap-10">
                                 <button
-                                    onClick={() => setIsApproveModalOpen(false)}
+                                    onClick={() => {
+                                        setModalType(null)
+                                        setSelectedBookingId(null)
+                                    }}
                                     className="text-[14px] font-bold text-slate-600 hover:text-slate-900 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={() => setIsApproveModalOpen(false)}
+                                    onClick={() => selectedBookingId && handleAction(selectedBookingId, 'approve')}
                                     className="px-10 py-4 bg-[#00D362] text-white text-[14px] font-bold rounded-2xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100"
                                 >
                                     Approve

@@ -1,6 +1,7 @@
 import { Eye, EyeOff, Bike } from "lucide-react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function Login() {
     const navigate = useNavigate()
@@ -10,15 +11,11 @@ export default function Login() {
     const [password, setPassword] = useState("")
     const [otp, setOtp] = useState("")
     const [error, setError] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setError("")
-
-        if (!email && !password) {
-            setError("Please enter your email and password")
-            return
-        }
 
         if (!email) {
             setError("Please enter your email")
@@ -35,9 +32,54 @@ export default function Login() {
             return
         }
 
-        // Add actual login logic here
-        console.log("Logging in with", { email, password, otp, mode })
-        navigate("/dashboard")
+        // Actual login logic
+        setIsLoading(true)
+        console.log("Attempting login for:", email)
+        try {
+            if (mode === "password") {
+                const response = await stationAdminApi.login({ email, password }) as any
+                console.log("Full login response:", response)
+                
+                // Flexible success check using 'code: 1' as indicator
+                const token = response.data?.token || response.token
+                const isSuccess = response.code === 1 || response.success
+                
+                if (isSuccess && token) {
+                    localStorage.setItem('token', token)
+                    localStorage.setItem('admin_details', JSON.stringify(response.data || {}))
+                    console.log("Success! Token found. Navigating...")
+                    navigate("/dashboard")
+                } else {
+                    setError(response.message || "Invalid credentials format")
+                }
+            } else {
+                // OTP workflow - using 'email' field as per API requirements
+                const response = await stationAdminApi.verifyOtp({ email, otp } as any) as any
+                console.log("Full OTP response:", response)
+                
+                const token = response.data?.token || response.token
+                const isSuccess = response.code === 1 || response.success
+
+                if (isSuccess && token) {
+                    localStorage.setItem('token', token)
+                    localStorage.setItem('admin_details', JSON.stringify(response.data || {}))
+                    console.log("OTP Success! Navigating...")
+                    navigate("/dashboard")
+                } else {
+                    setError(response.message || "Invalid OTP or Format")
+                }
+            }
+        } catch (err: any) {
+            console.error("Critical Login Error:", err)
+            const rawMessage = err.response?.data?.message || err.message || ""
+            if (rawMessage.toLowerCase().includes('timeout') || rawMessage.toLowerCase().includes('network')) {
+                setError("Invalid credentials ")
+            } else {
+                setError(rawMessage || "An error occurred during login")
+            }
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -64,13 +106,13 @@ export default function Login() {
                 {/* Email Field */}
                 <div className="space-y-2 mb-6">
                     <label className="text-sm font-medium text-slate-600 block">
-                        Email Address
+                        Email
                     </label>
                     <input
-                        type="email"
+                        type="text"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="admin@evstation.com"
+                        placeholder="Enter your email "
                         className={`w-full px-4 py-3 rounded-xl border text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all ${error && !email ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-orange-500"}`}
                     />
                 </div>
@@ -158,15 +200,23 @@ export default function Login() {
                 {/* Login Button */}
                 <button
                     type="submit"
-                    className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-200 transition-all transform hover:scale-[1.01] active:scale-[0.99] mb-6"
+                    disabled={isLoading}
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-200 transition-all transform hover:scale-[1.01] active:scale-[0.99] mb-6 flex items-center justify-center gap-2"
                 >
-                    Login to Dashboard
+                    {isLoading ? (
+                        <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Logging in...
+                        </>
+                    ) : (
+                        "Login to Dashboard"
+                    )}
                 </button>
 
-                {/* Demo Info Box */}
+                {/* Info Box */}
                 <div className="bg-slate-50 rounded-xl py-3 px-4 text-center">
                     <p className="text-xs text-slate-500">
-                        Demo: Any email & password will work
+                        Securely manage your rental fleet
                     </p>
                 </div>
 
@@ -182,4 +232,3 @@ export default function Login() {
         </form>
     )
 }
-

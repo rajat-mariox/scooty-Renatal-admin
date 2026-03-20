@@ -3,6 +3,7 @@ import {
     Map
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useState } from "react"
 import MainLayout from "../layouts/MainLayout"
 
 export default function RideMonitoring() {
@@ -31,6 +32,16 @@ export default function RideMonitoring() {
         },
     ]
 
+    const [searchQuery, setSearchQuery] = useState("")
+    const filteredRides = rides.filter((ride) => {
+        const query = searchQuery.toLowerCase()
+        return (
+            ride.id.toLowerCase().includes(query) ||
+            ride.riderName.toLowerCase().includes(query) ||
+            ride.vehicle.toLowerCase().includes(query)
+        )
+    })
+
     return (
         <MainLayout>
             <div className="space-y-6">
@@ -46,6 +57,8 @@ export default function RideMonitoring() {
                         <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
                         <input
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search by Ride ID, Rider name, or Vehicle ID..."
                             className="w-full bg-white border border-slate-100 rounded-2xl pl-16 pr-6 py-4 text-sm font-medium focus:outline-none focus:ring-0 transition-all placeholder:text-slate-400"
                         />
@@ -68,7 +81,7 @@ export default function RideMonitoring() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50/50">
-                            {rides.map((ride) => (
+                            {filteredRides.map((ride) => (
                                 <tr key={ride.id} className="hover:bg-slate-50/30 transition-all group">
                                     <td className="px-6 py-8 text-sm font-bold text-slate-700">{ride.id}</td>
                                     <td className="px-6 py-8">

@@ -12,8 +12,10 @@ import {
 } from "lucide-react"
 import MainLayout from "../layouts/MainLayout"
 import { ReactNode } from "react"
+import { useNavigate } from "react-router-dom"
 
 export default function Dashboard() {
+    const navigate = useNavigate()
     const stats = [
         { label: "Total Scooties", value: "6", icon: <Bike className="text-white" size={20} />, iconBg: "bg-blue-600" },
         { label: "Active", value: "3", icon: <CheckCircle2 className="text-white" size={20} />, iconBg: "bg-green-500" },
@@ -91,7 +93,10 @@ export default function Dashboard() {
                         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
                             <h3 className="text-lg font-bold mb-6">Quick Actions</h3>
                             <div className="space-y-4">
-                                <button className="w-full bg-orange-600 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-700 transition-all shadow-lg shadow-orange-100">
+                                <button
+                                    onClick={() => navigate('/add-vehicle')}
+                                    className="w-full bg-orange-600 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-700 transition-all shadow-lg shadow-orange-100"
+                                >
                                     <Plus size={18} />
                                     Add Vehicle
                                 </button>
@@ -99,7 +104,10 @@ export default function Dashboard() {
                                     <MapPin size={18} />
                                     View Live Map
                                 </button>
-                                <button className="w-full border-2 border-orange-600 text-orange-600 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-50 transition-all">
+                                <button 
+                                    onClick={() => navigate('/maintenance/new')}
+                                    className="w-full border-2 border-orange-600 text-orange-600 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-50 transition-all"
+                                >
                                     <Wrench size={18} />
                                     Raise Maintenance
                                 </button>

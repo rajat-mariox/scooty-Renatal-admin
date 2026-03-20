@@ -1,5 +1,5 @@
 import { 
-    Download,
+    Upload,
     TrendingUp,
     TrendingDown,
     IndianRupee,
@@ -66,7 +66,7 @@ export default function Reports() {
                             </div>
                         </div>
                         <button className="h-14 px-8 border-2 border-orange-500 text-orange-500 font-bold rounded-2xl flex items-center gap-2 hover:bg-orange-50 transition-all">
-                            <Download size={20} />
+                            <Upload size={20} />
                             Export Report
                         </button>
                     </div>

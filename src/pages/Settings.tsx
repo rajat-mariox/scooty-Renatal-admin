@@ -92,6 +92,12 @@ export default function Settings() {
                                 className="w-full h-[52px] bg-white border border-slate-200 rounded-xl px-6 text-[14px] font-medium text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-orange-200 transition-all"
                             />
                         </div>
+
+                        <div className="pt-2">
+                            <button className="px-10 h-12 bg-[#FF6A1F] text-white font-bold rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 text-[14px]">
+                                Change Password
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
