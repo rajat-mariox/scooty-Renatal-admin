@@ -11,13 +11,13 @@ export const stationAdminApi = {
   },
 
   // POST send-otp
-  sendOtp: async (data: { phone: string }) => {
+  sendOtp: async (data: { email: string }) => {
     const response = await axiosInstance.post(ENDPOINTS.SEND_OTP, data);
     return response.data;
   },
 
   // POST verify-otp
-  verifyOtp: async (data: { phone: string; otp: string }) => {
+  verifyOtp: async (data: { email: string; transactionId?: string; otp: string }) => {
     const response = await axiosInstance.post(ENDPOINTS.VERIFY_OTP, data);
     return response.data;
   },
@@ -34,14 +34,14 @@ export const stationAdminApi = {
     return response.data;
   },
 
-  // PATCH change-password
+  // POST change-password
   changePassword: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.CHANGE_PASSWORD, data);
+    const response = await axiosInstance.post(ENDPOINTS.CHANGE_PASSWORD, data);
     return response.data;
   },
 
-  // POST sesendotp (resend OTP)
-  resendOtp: async (data: { phone: string }) => {
+  // POST resend OTP
+  resendOtp: async (data: { transactionId: string }) => {
     const response = await axiosInstance.post(ENDPOINTS.RESEND_OTP, data);
     return response.data;
   },

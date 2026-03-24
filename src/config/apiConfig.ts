@@ -8,7 +8,7 @@ export const API_ENDPOINTS = {
     VERIFY_OTP: '/station-admin/auth/verify-otp',
     RESEND_OTP: '/station-admin/auth/resend-otp',
     ME: '/station-admin/me',
-    CHANGE_PASSWORD: '/station-admin/auth/change-password',
+    CHANGE_PASSWORD: '/station-admin/change-password',
     FORGOT_PASSWORD: {
       SEND_OTP: '/station-admin/auth/forgot-password/send-otp',
       RESEND_OTP: '/station-admin/auth/forgot-password/resend-otp',
