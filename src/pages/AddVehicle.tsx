@@ -1,30 +1,54 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
+import { stationAdminApi } from "../services/stationAdminApi";
 import {
   ArrowLeft,
   Save,
-  Plus,
   MapPin,
   Zap,
   Hash,
   Activity,
+  RefreshCw,
+  X
 } from "lucide-react";
 
 export default function AddVehicle() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    vehicleId: "SC007",
+    vehicleId: "", // Or you can let the backend generate it and leave this blank
     registrationNo: "",
     model: "Ola S1 Pro",
     station: "Station A",
     status: "Active",
   });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock save logic, redirect to fleet
-    navigate("/fleet");
+    if (!formData.registrationNo) {
+        setError("Registration Number is required");
+        return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    try {
+        await stationAdminApi.addVehicle({
+            registrationNo: formData.registrationNo,
+            model: formData.model,
+            stationId: formData.station, // Ensure this maps to what the backend expects
+            status: formData.status
+        });
+        navigate("/fleet");
+    } catch (err: any) {
+        console.error("Failed to add vehicle:", err);
+        setError(err.response?.data?.message || "Failed to add vehicle");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
@@ -49,6 +73,14 @@ export default function AddVehicle() {
         </div>
 
         <div className="bg-white rounded-[2rem] border border-slate-100/80 shadow-sm p-8">
+          
+          {error && (
+            <div className="mb-8 bg-rose-50 text-rose-600 px-6 py-4 rounded-xl text-sm font-bold border border-rose-100 flex items-center justify-between">
+                <span>{error}</span>
+                <button type="button" onClick={() => setError(null)}><X size={16} /></button>
+            </div>
+          )}
+
           <form onSubmit={handleSave} className="space-y-8">
             <div className="grid grid-cols-2 gap-8">
               {/* Left Column */}
@@ -59,24 +91,7 @@ export default function AddVehicle() {
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Vehicle ID (Auto-generated)
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Hash size={18} className="text-slate-400" />
-                    </div>
-                    <input
-                      type="text"
-                      disabled
-                      value={formData.vehicleId}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-500 rounded-xl pl-11 pr-4 py-3 text-sm font-bold focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Registration Number
+                    Registration Number *
                   </label>
                   <input
                     type="text"
@@ -106,7 +121,7 @@ export default function AddVehicle() {
                       onChange={(e) =>
                         setFormData({ ...formData, model: e.target.value })
                       }
-                      className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none"
+                      className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none cursor-pointer"
                     >
                       <option>Ola S1 Pro</option>
                       <option>Ather 450X</option>
@@ -138,7 +153,7 @@ export default function AddVehicle() {
                       onChange={(e) =>
                         setFormData({ ...formData, station: e.target.value })
                       }
-                      className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none"
+                      className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none cursor-pointer"
                     >
                       <option>Station A</option>
                       <option>Station B</option>
@@ -160,7 +175,7 @@ export default function AddVehicle() {
                       onChange={(e) =>
                         setFormData({ ...formData, status: e.target.value })
                       }
-                      className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none"
+                      className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none cursor-pointer"
                     >
                       <option>Active</option>
                       <option>Maintenance</option>
@@ -178,15 +193,17 @@ export default function AddVehicle() {
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
+                disabled={isSubmitting}
+                className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-8 py-3 bg-[#FF6A1F] text-white text-sm font-bold rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-600 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                disabled={isSubmitting}
+                className="px-8 py-3 bg-[#FF6A1F] text-white text-sm font-bold rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-600 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-70 disabled:hover:translate-y-0"
               >
-                <Save size={18} />
+                {isSubmitting ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
                 Save Vehicle
               </button>
             </div>

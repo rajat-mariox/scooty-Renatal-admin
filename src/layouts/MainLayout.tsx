@@ -131,7 +131,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             )}
                         </div>
 
-                        <button 
+                        <button
                             onClick={() => navigate("/notifications")}
                             className="relative text-slate-400 hover:text-slate-600 transition-colors"
                         >

@@ -269,14 +269,14 @@ export default function Login() {
                     <div className="flex gap-2 p-1 bg-slate-100 rounded-xl mb-6">
                         <button
                             type="button"
-                            onClick={() => setMode("password")}
+                            onClick={() => { setMode("password"); setError(""); }}
                             className={`flex-1 font-medium py-2.5 rounded-lg transition-all ${mode === "password" ? "bg-orange-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-200"}`}
                         >
                             Password
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setMode("otp"); handleSendOtp() }}
+                            onClick={() => { setMode("otp"); setError(""); }}
                             className={`flex-1 font-medium py-2.5 rounded-lg transition-all ${mode === "otp" ? "bg-orange-600 text-white shadow-md" : "text-slate-500 hover:bg-slate-200"}`}
                         >
                             OTP
@@ -322,26 +322,30 @@ export default function Login() {
                     ) : (
                         <div className="space-y-6 mb-8">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-600 block">
-                                    Enter OTP
-                                </label>
+                                <div className="flex justify-between items-center block">
+                                    <label className="text-sm font-medium text-slate-600">
+                                        Enter OTP
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleResendOtp}
+                                        disabled={resendTimer > 0 || isLoading}
+                                        className="text-xs font-bold text-orange-600 hover:text-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {!transactionId ? "Get OTP" : resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Resend OTP"}
+                                    </button>
+                                </div>
                                 <input
                                     type="text"
                                     value={otp}
                                     onChange={(e) => setOtp(e.target.value)}
                                     placeholder="6-digit OTP"
-                                    className={`w-full px-4 py-3 rounded-xl border text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all ${error && !otp ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-orange-500"}`}
+                                    disabled={!transactionId}
+                                    className={`w-full px-4 py-3 rounded-xl border text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all ${error && !otp ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-orange-500"} ${!transactionId ? "bg-slate-50/50 cursor-not-allowed" : ""}`}
                                 />
-                            </div>
-                            <div className="text-center">
-                                <button
-                                    type="button"
-                                    onClick={handleResendOtp}
-                                    disabled={resendTimer > 0 || isLoading}
-                                    className="text-sm font-bold text-orange-600 hover:text-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Resend OTP"}
-                                </button>
+                                {!transactionId && (
+                                    <p className="text-[10px] text-slate-400 ml-1">Click "Get OTP" to receive a code on your email.</p>
+                                )}
                             </div>
                         </div>
                     )}

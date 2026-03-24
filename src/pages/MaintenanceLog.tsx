@@ -1,17 +1,52 @@
 import {
-    Plus,
     ChevronDown,
     Upload,
-    X
+    X,
+    RefreshCw
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function MaintenanceLog() {
     const navigate = useNavigate()
     const fileInputRef = useRef<HTMLInputElement>(null)
+    
+    const [vehicles, setVehicles] = useState<any[]>([])
+    const [loadingVehicles, setLoadingVehicles] = useState(true)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    // Form State
+    const [formData, setFormData] = useState({
+        vehicleId: "",
+        issueType: "",
+        description: "",
+        cost: ""
+    })
     const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+
+    useEffect(() => {
+        const fetchVehicles = async () => {
+            try {
+                const response = await stationAdminApi.getVehicles()
+                const data = (response as any).data || response
+                const fetchedVehicles = Array.isArray(data.vehicles) ? data.vehicles : (Array.isArray(data) ? data : [])
+                setVehicles(fetchedVehicles)
+            } catch (err) {
+                console.error("Failed to fetch vehicles:", err)
+            } finally {
+                setLoadingVehicles(false)
+            }
+        }
+        fetchVehicles()
+    }, [])
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target
+        setFormData(prev => ({ ...prev, [name]: value }))
+    }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -21,6 +56,36 @@ export default function MaintenanceLog() {
 
     const removeFile = (index: number) => {
         setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const handleSubmit = async () => {
+        if (!formData.vehicleId || !formData.issueType || !formData.description) {
+            setError("Please fill in all required fields (Vehicle, Issue Type, Description)")
+            return
+        }
+
+        setIsSubmitting(true)
+        setError(null)
+
+        try {
+            // For file uploads, we normally use FormData, but checking stationAdminApi signature: createMaintenanceLog(data: any)
+            // If it accepts JSON:
+            const payload = {
+                vehicleId: formData.vehicleId,
+                issueType: formData.issueType,
+                description: formData.description,
+                cost: formData.cost ? parseFloat(formData.cost) : undefined,
+                status: 'Pending'
+            }
+            
+            await stationAdminApi.createMaintenanceLog(payload)
+            navigate("/maintenance")
+        } catch (err: any) {
+            console.error("Failed to create maintenance log:", err)
+            setError(err.response?.data?.message || "Failed to create maintenance log")
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     return (
@@ -35,30 +100,57 @@ export default function MaintenanceLog() {
 
                 {/* Form Card */}
                 <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-10 space-y-8">
+                    
+                    {error && (
+                        <div className="bg-rose-50 text-rose-600 px-6 py-4 rounded-xl text-sm font-bold border border-rose-100 flex items-center justify-between">
+                            <span>{error}</span>
+                            <button onClick={() => setError(null)}><X size={16} /></button>
+                        </div>
+                    )}
 
                     {/* Select Vehicle */}
                     <div className="space-y-2">
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Select Vehicle</label>
+                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Select Vehicle *</label>
                         <div className="relative">
-                            <select className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 appearance-none focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all cursor-pointer">
-                                <option>SC001 - Ola S1 Pro</option>
-                                <option>SC002 - TVS iQube</option>
-                                <option>SC003 - TVS iQube</option>
+                            <select 
+                                name="vehicleId"
+                                value={formData.vehicleId}
+                                onChange={handleChange}
+                                disabled={loadingVehicles}
+                                className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 appearance-none focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                <option value="" disabled>Select Vehicle</option>
+                                {vehicles.map((v: any, index: number) => (
+                                    <option key={v.vehicleId || v.id || index} value={v.vehicleId || v.id}>
+                                        {v.vehicleId || v.id} - {v.model || "Unknown Model"}
+                                    </option>
+                                ))}
                             </select>
-                            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            {loadingVehicles ? (
+                                <RefreshCw className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" size={18} />
+                            ) : (
+                                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            )}
                         </div>
                     </div>
 
                     {/* Issue Type */}
                     <div className="space-y-2">
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Issue Type</label>
+                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Issue Type *</label>
                         <div className="relative">
-                            <select className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all cursor-pointer">
-                                <option value="" disabled selected>Select Issue Type</option>
-                                <option>Battery Replacement</option>
-                                <option>Brake Service</option>
-                                <option>Tire Change</option>
-                                <option>General Service</option>
+                            <select 
+                                name="issueType"
+                                value={formData.issueType}
+                                onChange={handleChange}
+                                className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 appearance-none focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all cursor-pointer"
+                            >
+                                <option value="" disabled>Select Issue Type</option>
+                                <option value="Battery Replacement">Battery Replacement</option>
+                                <option value="Brake Service">Brake Service</option>
+                                <option value="Tire Change">Tire Change</option>
+                                <option value="General Service">General Service</option>
+                                <option value="Damage Repair">Damage Repair</option>
+                                <option value="Other">Other</option>
                             </select>
                             <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         </div>
@@ -66,8 +158,11 @@ export default function MaintenanceLog() {
 
                     {/* Description */}
                     <div className="space-y-2">
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Description</label>
+                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Description *</label>
                         <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
                             placeholder="Describe the issue in detail..."
                             className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-medium text-slate-700 min-h-[140px] focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all resize-none"
                         ></textarea>
@@ -77,7 +172,10 @@ export default function MaintenanceLog() {
                     <div className="space-y-2">
                         <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Estimated Cost (Optional)</label>
                         <input
-                            type="text"
+                            type="number"
+                            name="cost"
+                            value={formData.cost}
+                            onChange={handleChange}
                             placeholder="Enter cost in ₹"
                             className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all"
                         />
@@ -125,11 +223,17 @@ export default function MaintenanceLog() {
                     <div className="grid grid-cols-2 gap-6 pt-4">
                         <button
                             onClick={() => navigate("/maintenance")}
-                            className="w-full py-4 border-2 border-orange-600 rounded-2xl text-orange-600 font-extrabold text-sm hover:bg-orange-50 transition-all"
+                            disabled={isSubmitting}
+                            className="w-full py-4 border-2 border-orange-600 rounded-2xl text-orange-600 font-extrabold text-sm hover:bg-orange-50 transition-all disabled:opacity-50"
                         >
                             Cancel
                         </button>
-                        <button className="w-full py-4 bg-[#FF6A1F] shadow-lg shadow-orange-100 text-white font-extrabold rounded-2xl hover:bg-orange-600 transition-all text-sm">
+                        <button 
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="w-full py-4 bg-[#FF6A1F] shadow-lg shadow-orange-100 text-white font-extrabold rounded-2xl hover:bg-orange-600 transition-all text-sm flex justify-center items-center gap-2 disabled:opacity-70"
+                        >
+                            {isSubmitting && <RefreshCw size={18} className="animate-spin" />}
                             Save Maintenance Record
                         </button>
                     </div>

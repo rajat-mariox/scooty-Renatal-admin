@@ -1,22 +1,113 @@
 import {
     ArrowLeft,
-    Wrench
+    Wrench,
+    RefreshCw,
+    AlertCircle
 } from "lucide-react"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function MaintenanceDetail() {
     const navigate = useNavigate()
-    const [currentStatus, setCurrentStatus] = useState<'Pending' | 'In Progress' | 'Completed'>('In Progress')
+    const [searchParams] = useSearchParams()
+    const id = searchParams.get('id')
 
-    const currentData = {
-        id: "M001",
-        vehicleId: "SC004",
-        issueType: "Brake Issue",
-        date: "2026-02-21",
-        cost: "₹1,200",
-        description: "Rear brake pad replacement required"
+    const [currentStatus, setCurrentStatus] = useState<string>('Pending')
+    const [currentData, setCurrentData] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [actionLoading, setActionLoading] = useState(false)
+
+    useEffect(() => {
+        const fetchMaintenanceDetails = async () => {
+            if (!id) {
+                setError("No maintenance log ID provided")
+                setLoading(false)
+                return
+            }
+
+            setLoading(true)
+            try {
+                // Since there is no single log detail endpoint, fetch all and filter
+                const response = await stationAdminApi.getMaintenanceLogs()
+                const data = (response as any).data || response
+                const fetchedLogs = Array.isArray(data.logs) ? data.logs : (Array.isArray(data) ? data : [])
+                
+                const logData = fetchedLogs.find((log: any) => 
+                    String(log.logId || log.id) === String(id)
+                )
+
+                if (logData) {
+                    const formattedData = {
+                        id: logData.logId || logData.id || "N/A",
+                        vehicleId: logData.vehicleId || logData.vehicle?.id || "N/A",
+                        issueType: logData.issueType || "General Maintenance",
+                        date: logData.date || logData.createdAt ? new Date(logData.date || logData.createdAt).toISOString().split('T')[0] : "N/A",
+                        cost: logData.cost ? `₹${logData.cost}` : "-",
+                        description: logData.description || "No description provided."
+                    }
+                    setCurrentData(formattedData)
+                    setCurrentStatus(logData.status || "Pending")
+                    setError(null)
+                } else {
+                    setError("Maintenance log not found")
+                }
+            } catch (err: any) {
+                console.error("Failed to fetch maintenance details:", err)
+                setError(err.response?.data?.message || "Failed to load maintenance details")
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchMaintenanceDetails()
+    }, [id])
+
+    const handleUpdateStatus = async (newStatus: string) => {
+        setActionLoading(true)
+        try {
+            await stationAdminApi.updateMaintenanceStatus({
+                logId: id,
+                status: newStatus
+            })
+            setCurrentStatus(newStatus)
+        } catch (err: any) {
+            console.error("Failed to update status:", err)
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    if (loading) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <RefreshCw className="animate-spin text-orange-500" size={48} />
+                    <span className="text-lg font-bold text-slate-500">Loading Maintenance Details...</span>
+                </div>
+            </MainLayout>
+        )
+    }
+
+    if (error || !currentData) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center">
+                        <AlertCircle className="text-rose-500" size={40} />
+                    </div>
+                    <span className="text-lg font-bold text-slate-700">{error || "Maintenance Log not found"}</span>
+                    <button 
+                        onClick={() => navigate("/maintenance")}
+                        className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all mt-4"
+                    >
+                        Back to Logs
+                    </button>
+                </div>
+            </MainLayout>
+        )
     }
 
     return (
@@ -35,7 +126,7 @@ export default function MaintenanceDetail() {
                         </button>
                         <div className="space-y-1">
                             <h2 className="text-[20px] font-bold text-slate-800">Maintenance Details - {currentData.id}</h2>
-                            <p className="text-slate-400 font-medium text-[14px]">{currentData.vehicleId}</p>
+                            <p className="text-slate-400 font-medium text-[14px]">Vehicle: {currentData.vehicleId}</p>
                         </div>
                     </div>
                     <div>
@@ -85,18 +176,25 @@ export default function MaintenanceDetail() {
                             </div>
 
                             <div className="space-y-4">
-                                <button 
-                                    onClick={() => setCurrentStatus(currentStatus === 'Pending' ? 'In Progress' : 'Pending')}
-                                    className="w-full py-3.5 border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold text-[14px] hover:bg-orange-50 transition-all"
-                                >
-                                    Update Status
-                                </button>
-                                <button 
-                                    onClick={() => setCurrentStatus('Completed')}
-                                    className="w-full py-3.5 bg-[#FF6A1F] text-white font-bold text-[14px] rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-100"
-                                >
-                                    Mark as Completed
-                                </button>
+                                {currentStatus !== 'Completed' && (
+                                    <>
+                                        <button 
+                                            onClick={() => handleUpdateStatus(currentStatus === 'Pending' ? 'In Progress' : 'Pending')}
+                                            disabled={actionLoading}
+                                            className="w-full flex justify-center items-center gap-2 py-3.5 border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold text-[14px] hover:bg-orange-50 transition-all disabled:opacity-50"
+                                        >
+                                            {currentStatus === 'Pending' ? 'Mark In Progress' : 'Mark Pending'}
+                                        </button>
+                                        <button 
+                                            onClick={() => handleUpdateStatus('Completed')}
+                                            disabled={actionLoading}
+                                            className="w-full flex justify-center items-center gap-2 py-3.5 bg-[#FF6A1F] text-white font-bold text-[14px] rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 disabled:opacity-70"
+                                        >
+                                            {actionLoading && <RefreshCw size={16} className="animate-spin" />}
+                                            Mark as Completed
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

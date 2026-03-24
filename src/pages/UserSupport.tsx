@@ -1,32 +1,43 @@
-import { Search } from "lucide-react"
+import { Search, RefreshCw } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function UserSupport() {
     const navigate = useNavigate()
-    const complaints = [
-        {
-            id: "C001",
-            user: "Sanjay Verma",
-            phone: "+91 99123 45678",
-            issue: "Vehicle stopped mid-ride",
-            rideId: "R003",
-            date: "2026-02-23",
-            status: "Pending"
-        },
-        {
-            id: "C002",
-            user: "Kavita Sharma",
-            phone: "+91 88234 56789",
-            issue: "Overcharged",
-            rideId: "R004",
-            date: "2026-02-22",
-            status: "Resolved"
-        },
-    ]
-    
+    const [complaints, setComplaints] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
+
+    const fetchTickets = async () => {
+        setLoading(true)
+        try {
+            const response = await stationAdminApi.getTickets()
+            const data = (response as any).data || response
+            const fetchedTickets = Array.isArray(data.tickets) ? data.tickets : (Array.isArray(data) ? data : [])
+            
+            const mappedTickets = fetchedTickets.map((t: any) => ({
+                id: t.ticketId || t.id || "N/A",
+                user: t.userName || t.user?.name || "Unknown User",
+                phone: t.phone || t.user?.phone || "N/A",
+                issue: t.issue || t.subject || t.description || "No description",
+                rideId: t.rideId || t.ride?.id || "-",
+                date: t.date || t.createdAt ? new Date(t.date || t.createdAt).toISOString().split('T')[0] : "N/A",
+                status: t.status || "Pending"
+            }))
+            
+            setComplaints(mappedTickets)
+        } catch (error) {
+            console.error("Failed to fetch tickets:", error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchTickets()
+    }, [])
 
     const filteredComplaints = complaints.filter((c) => {
         const query = searchQuery.toLowerCase()
@@ -43,9 +54,12 @@ export default function UserSupport() {
             <div className="space-y-6 max-w-[1500px] font-['Poppins']">
                 
                 {/* Header Section */}
-                <div className="space-y-1">
-                    <h2 className="text-[18px] font-bold text-slate-800 tracking-tight">User Support</h2>
-                    <p className="text-slate-400 font-medium text-[13px]">Manage and resolve customer complaints</p>
+                <div className="flex justify-between items-end">
+                    <div className="space-y-1">
+                        <h2 className="text-[18px] font-bold text-slate-800 tracking-tight">User Support</h2>
+                        <p className="text-slate-400 font-medium text-[13px]">Manage and resolve customer complaints</p>
+                    </div>
+                    {loading && <RefreshCw className="animate-spin text-orange-500 mb-1" size={18} />}
                 </div>
 
                 {/* Search & Filter Container */}
@@ -70,7 +84,15 @@ export default function UserSupport() {
                 </div>
 
                 {/* Table Container */}
-                <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20">
+                <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 relative min-h-[300px]">
+                    {loading ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
+                            <div className="flex flex-col items-center gap-3">
+                                <RefreshCw className="animate-spin text-orange-500" size={32} />
+                                <span className="text-sm font-bold text-slate-500">Loading Support Tickets...</span>
+                            </div>
+                        </div>
+                    ) : null}
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -86,7 +108,7 @@ export default function UserSupport() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {filteredComplaints.map((complaint) => (
+                                {filteredComplaints.length > 0 ? filteredComplaints.map((complaint) => (
                                     <tr key={complaint.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-5">
                                             <span className="text-[14px] font-bold text-slate-800">{complaint.id}</span>
@@ -108,7 +130,7 @@ export default function UserSupport() {
                                         </td>
                                         <td className="px-6 py-5">
                                             <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${
-                                                complaint.status === "Pending"
+                                                complaint.status === "Pending" || complaint.status === 'Open' || complaint.status === 'In Progress'
                                                     ? "bg-yellow-100 text-yellow-600"
                                                     : "bg-green-100 text-green-600"
                                             }`}>
@@ -117,14 +139,20 @@ export default function UserSupport() {
                                         </td>
                                         <td className="px-6 py-5">
                                             <button
-                                                onClick={() => navigate("/support/detail")}
+                                                onClick={() => navigate(`/support/detail?id=${complaint.id}`)}
                                                 className="px-4 py-1.5 bg-[#FF6A1F] hover:bg-orange-600 text-white text-[12px] font-bold rounded-lg transition-all shadow-sm"
                                             >
                                                 View Details
                                             </button>
                                         </td>
                                     </tr>
-                                ))}
+                                )) : !loading && (
+                                    <tr>
+                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-xl">
+                                            No support tickets found matching your criteria
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

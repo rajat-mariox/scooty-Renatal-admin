@@ -3,11 +3,13 @@ import {
     Filter,
     MoreVertical,
     ChevronDown,
-    Plus
+    Plus,
+    RefreshCw
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import { useState, useEffect, useRef } from "react"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function FleetManagement() {
     const navigate = useNavigate()
@@ -15,7 +17,10 @@ export default function FleetManagement() {
     const [statusFilter, setStatusFilter] = useState("All")
     const [isFilterOpen, setIsFilterOpen] = useState(false)
     const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-    const [modalAction, setModalAction] = useState<{ type: string, text: string } | null>(null)
+    const [modalAction, setModalAction] = useState<{ type: string, text: string, id: string } | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [actionLoading, setActionLoading] = useState(false)
+    const [vehicles, setVehicles] = useState<any[]>([])
     const menuRef = useRef<HTMLDivElement>(null)
     const filterRef = useRef<HTMLDivElement>(null)
 
@@ -33,14 +38,55 @@ export default function FleetManagement() {
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
-    const vehicles = [
-        { id: "SC001", model: "Ola S1 Pro", battery: 85, status: "Maintenance", location: "Station A - Bay 3", lastRide: "10 mins ago" },
-        { id: "SC002", model: "Ather 450X", battery: 45, status: "In Ride", location: "Moving - Connaught Place", lastRide: "Active" },
-        { id: "SC003", model: "TVS iQube", battery: 15, status: "Charging", location: "Station A - Charging Bay 1", lastRide: "2 hours ago" },
-        { id: "SC004", model: "Bajaj Chetak", battery: 0, status: "Maintenance", location: "Workshop", lastRide: "3 days ago" },
-        { id: "SC005", model: "Ola S1 Air", battery: 92, status: "Active", location: "Station A - Bay 1", lastRide: "5 mins ago" },
-        { id: "SC006", model: "Simple One", battery: 68, status: "Active", location: "Station A - Bay 5", lastRide: "30 mins ago" },
-    ]
+    const fetchVehicles = async () => {
+        setLoading(true)
+        try {
+            const response = await stationAdminApi.getVehicles()
+            const data = (response as any).data || response
+            
+            // Format data if needed so it matches the table expectation
+            const fetchedVehicles = Array.isArray(data.vehicles) ? data.vehicles : (Array.isArray(data) ? data : [])
+            const mappedVehicles = fetchedVehicles.map((v: any) => ({
+                id: v.vehicleId || v.id || "N/A",
+                model: v.model || "Unknown Model",
+                battery: v.batteryLevel !== undefined ? v.batteryLevel : (v.battery || 0),
+                status: v.status || "Active",
+                location: v.location || v.currentLocation || "Station",
+                lastRide: v.lastRide || "N/A"
+            }))
+
+            setVehicles(mappedVehicles)
+        } catch (error) {
+            console.error("Failed to fetch vehicles:", error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchVehicles()
+    }, [])
+
+    const handleConfirmAction = async () => {
+        if (!modalAction) return
+        setActionLoading(true)
+        try {
+            let statusToUpdate = modalAction.type === 'charging' ? 'Charging' : 
+                                 modalAction.type === 'maintenance' ? 'Maintenance' : 'Active'
+                                 
+            await stationAdminApi.updateVehicleStatus({
+                vehicleId: modalAction.id,
+                status: statusToUpdate
+            })
+            // Refresh list
+            await fetchVehicles()
+        } catch (error) {
+            console.error("Failed to update status:", error)
+        } finally {
+            setActionLoading(false)
+            setModalAction(null)
+        }
+    }
 
     const filteredVehicles = vehicles.filter((v) => {
         const query = searchQuery.toLowerCase()
@@ -59,9 +105,12 @@ export default function FleetManagement() {
             <div className="space-y-6">
 
                 {/* Header Section */}
-                <div>
-                    <h2 className="text-xl font-extrabold text-[#1E293B]">Fleet Management</h2>
-                    <p className="text-slate-400 text-sm font-medium mt-1">Manage and monitor all vehicles in your station</p>
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h2 className="text-xl font-extrabold text-[#1E293B]">Fleet Management</h2>
+                        <p className="text-slate-400 text-sm font-medium mt-1">Manage and monitor all vehicles in your station</p>
+                    </div>
+                    {loading && <RefreshCw className="animate-spin text-orange-500 mb-1" size={20} />}
                 </div>
 
                 {/* Filter Bar */}
@@ -122,7 +171,15 @@ export default function FleetManagement() {
                 </div>
 
                 {/* Vehicle Table Card */}
-                <div className="bg-white rounded-[2rem] border border-slate-100/80 shadow-sm overflow-hidden p-6">
+                <div className="bg-white rounded-[2rem] border border-slate-100/80 shadow-sm overflow-hidden p-6 relative min-h-[400px]">
+                    {loading ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
+                            <div className="flex flex-col items-center gap-3">
+                                <RefreshCw className="animate-spin text-orange-500" size={32} />
+                                <span className="text-sm font-bold text-slate-500">Loading Fleet Data...</span>
+                            </div>
+                        </div>
+                    ) : null}
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-slate-50">
@@ -136,10 +193,10 @@ export default function FleetManagement() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50/50">
-                            {filteredVehicles.map((v) => (
+                            {filteredVehicles.length > 0 ? filteredVehicles.map((v) => (
                                 <tr
                                     key={v.id}
-                                    onClick={() => navigate("/fleet/details")}
+                                    onClick={() => navigate(`/fleet/details?id=${v.id}`)}
                                     className="hover:bg-slate-50/30 transition-all cursor-pointer group"
                                 >
                                     <td className="px-6 py-6 text-sm font-bold text-slate-700">
@@ -160,7 +217,7 @@ export default function FleetManagement() {
                                                     className={`h-full rounded-full transition-all duration-500 ${v.battery <= 15 ? 'bg-rose-500' :
                                                         v.battery <= 50 ? 'bg-yellow-500' : 'bg-green-500'
                                                         }`}
-                                                    style={{ width: `${v.battery}%` }}
+                                                    style={{ width: `${Math.min(Math.max(v.battery, 0), 100)}%` }}
                                                 ></div>
                                             </div>
                                         </div>
@@ -202,7 +259,7 @@ export default function FleetManagement() {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setOpenMenuId(null);
-                                                            setModalAction({ type: 'maintenance', text: 'maintenance' });
+                                                            setModalAction({ type: 'maintenance', text: 'maintenance', id: v.id });
                                                         }}
                                                     >
                                                         Mark for Maintenance
@@ -212,7 +269,7 @@ export default function FleetManagement() {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setOpenMenuId(null);
-                                                            setModalAction({ type: 'active', text: 'active' });
+                                                            setModalAction({ type: 'active', text: 'active', id: v.id });
                                                         }}
                                                     >
                                                         Mark as Active
@@ -222,7 +279,7 @@ export default function FleetManagement() {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setOpenMenuId(null);
-                                                            setModalAction({ type: 'charging', text: 'charging' });
+                                                            setModalAction({ type: 'charging', text: 'charging', id: v.id });
                                                         }}
                                                     >
                                                         Assign Charging
@@ -231,7 +288,7 @@ export default function FleetManagement() {
                                                         className="w-full text-left px-6 py-2.5 text-xs font-extrabold text-orange-600 hover:bg-orange-50 transition-all"
                                                         onClick={(e) => {
                                                             e.stopPropagation()
-                                                            navigate("/fleet/details")
+                                                            navigate(`/fleet/details?id=${v.id}`)
                                                         }}
                                                     >
                                                         View Details
@@ -241,7 +298,13 @@ export default function FleetManagement() {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )) : !loading && (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-2xl">
+                                        No vehicles found matching your criteria
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -252,22 +315,22 @@ export default function FleetManagement() {
                         <div className="bg-white rounded-[2.5rem] shadow-2xl p-10 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
                             <h3 className="text-sm font-extrabold text-[#1E293B] mb-2">Confirm Action</h3>
                             <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
-                                Are you sure you want to {modalAction.text} this vehicle?
+                                Are you sure you want to change {modalAction.id}'s status to <strong>{modalAction.text}</strong>?
                             </p>
                             <div className="flex gap-4">
                                 <button
                                     onClick={() => setModalAction(null)}
-                                    className="flex-1 py-3 text-sm font-extrabold text-slate-400 hover:text-slate-600 transition-colors"
+                                    disabled={actionLoading}
+                                    className="flex-1 py-3 text-sm font-extrabold text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        // Logic for action would go here
-                                        setModalAction(null)
-                                    }}
-                                    className="flex-1 py-3 bg-[#FF6A1F] text-white text-sm font-extrabold rounded-2xl shadow-lg shadow-orange-100 hover:bg-orange-600 transition-all"
+                                    onClick={handleConfirmAction}
+                                    disabled={actionLoading}
+                                    className="flex-1 py-3 bg-[#FF6A1F] text-white text-sm font-extrabold rounded-2xl shadow-lg shadow-orange-100 hover:bg-orange-600 transition-all flex justify-center items-center gap-2 disabled:opacity-70"
                                 >
+                                    {actionLoading ? <RefreshCw size={16} className="animate-spin" /> : null}
                                     Confirm
                                 </button>
                             </div>
@@ -279,3 +342,4 @@ export default function FleetManagement() {
         </MainLayout>
     )
 }
+

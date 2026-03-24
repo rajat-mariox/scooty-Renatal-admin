@@ -8,31 +8,65 @@ import {
     Navigation,
     AlertTriangle,
     Plus,
-    MapPin
+    MapPin,
+    RefreshCw
 } from "lucide-react"
 import MainLayout from "../layouts/MainLayout"
-import { ReactNode } from "react"
+import { ReactNode, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function Dashboard() {
     const navigate = useNavigate()
-    const stats = [
-        { label: "Total Scooties", value: "6", icon: <Bike className="text-white" size={20} />, iconBg: "bg-blue-600" },
-        { label: "Active", value: "3", icon: <CheckCircle2 className="text-white" size={20} />, iconBg: "bg-green-500" },
-        { label: "In Ride", value: "1", icon: <Send className="text-white" size={20} />, iconBg: "bg-orange-500" },
-        { label: "Maintenance", value: "1", icon: <Wrench className="text-white" size={20} />, iconBg: "bg-rose-500" },
-        { label: "Charging", value: "1", icon: <Zap className="text-white" size={20} />, iconBg: "bg-yellow-500" },
-    ]
+    const [loading, setLoading] = useState(true)
+    const [stats, setStats] = useState([
+        { label: "Total Scooties", value: "0", icon: <Bike className="text-white" size={20} />, iconBg: "bg-blue-600", key: "total" },
+        { label: "Active", value: "0", icon: <CheckCircle2 className="text-white" size={20} />, iconBg: "bg-green-500", key: "active" },
+        { label: "In Ride", value: "0", icon: <Send className="text-white" size={20} />, iconBg: "bg-orange-500", key: "inRide" },
+        { label: "Maintenance", value: "0", icon: <Wrench className="text-white" size={20} />, iconBg: "bg-rose-500", key: "maintenance" },
+        { label: "Charging", value: "0", icon: <Zap className="text-white" size={20} />, iconBg: "bg-yellow-500", key: "charging" },
+    ])
+    const [activities, setActivities] = useState<any[]>([])
+    const [alerts, setAlerts] = useState<any[]>([])
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            setLoading(true)
+            try {
+                const response = await stationAdminApi.getDashboardStats()
+                const data = (response as any).data || response
+
+                // Map stats from API
+                setStats(prev => prev.map(s => ({
+                    ...s,
+                    value: String(data.stats?.[s.key] || data[s.key] || 0)
+                })))
+
+                // Set activities and alerts if available
+                setActivities(data.activities || [])
+                setAlerts(data.alerts || [])
+            } catch (error) {
+                console.error("Failed to fetch dashboard stats:", error)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchDashboardData()
+    }, [])
 
     return (
         <MainLayout>
             <div className="space-y-8">
                 {/* Welcome Section */}
-                <div>
-                    <h2 className="text-2xl font-bold">Dashboard</h2>
-                    <p className="text-slate-500 text-sm mt-1">
-                        Welcome back, Admin User • Monday, February 23, 2026
-                    </p>
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h2 className="text-2xl font-bold">Dashboard</h2>
+                        <p className="text-slate-500 text-sm mt-1">
+                            Welcome back, Admin User • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                        </p>
+                    </div>
+                    {loading && <RefreshCw className="animate-spin text-orange-500 mb-2" size={20} />}
                 </div>
 
                 {/* Stats Grid */}
@@ -45,7 +79,9 @@ export default function Dashboard() {
                                     {stat.icon}
                                 </div>
                             </div>
-                            <div className="text-3xl font-bold">{stat.value}</div>
+                            <div className="text-3xl font-bold">
+                                {loading ? <div className="h-8 w-12 bg-slate-100 animate-pulse rounded" /> : stat.value}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -60,30 +96,29 @@ export default function Dashboard() {
                         </div>
 
                         <div className="space-y-6">
-                            <ActivityItem
-                                icon={<Navigation size={18} className="text-green-500" />}
-                                title="Ride Started"
-                                details="SC002 - Rahul Sharma started a ride"
-                                time="5 mins ago"
-                            />
-                            <ActivityItem
-                                icon={<CheckCircle2 size={18} className="text-blue-500" />}
-                                title="Ride Ended"
-                                details="SC001 - Priya Singh completed ride (₹85)"
-                                time="12 mins ago"
-                            />
-                            <ActivityItem
-                                icon={<AlertTriangle size={18} className="text-rose-500" />}
-                                title="Complaint Raised"
-                                details="C001 - Vehicle stopped mid-ride"
-                                time="25 mins ago"
-                            />
-                            <ActivityItem
-                                icon={<Zap size={18} className="text-yellow-500" />}
-                                title="Battery Alert"
-                                details="SC003 battery dropped below 20%"
-                                time="1 hour ago"
-                            />
+                            {loading ? (
+                                [...Array(4)].map((_, i) => (
+                                    <div key={i} className="flex gap-4 animate-pulse">
+                                        <div className="w-10 h-10 bg-slate-100 rounded-xl" />
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-4 bg-slate-100 rounded w-1/4" />
+                                            <div className="h-3 bg-slate-100 rounded w-3/4" />
+                                        </div>
+                                    </div>
+                                ))
+                            ) : activities.length > 0 ? (
+                                activities.map((activity, index) => (
+                                    <ActivityItem
+                                        key={index}
+                                        icon={activity.type === 'ride' ? <Navigation size={18} className="text-green-500" /> : <AlertTriangle size={18} className="text-rose-500" />}
+                                        title={activity.title}
+                                        details={activity.description}
+                                        time={activity.time}
+                                    />
+                                ))
+                            ) : (
+                                <div className="text-center py-10 text-slate-400 font-medium">No recent activity</div>
+                            )}
                         </div>
                     </div>
 
@@ -122,21 +157,22 @@ export default function Dashboard() {
                             </div>
 
                             <div className="space-y-4">
-                                <AlertItem
-                                    title="Low Battery Alert"
-                                    details="SC003 battery dropped below 20%"
-                                    time="5 mins ago"
-                                />
-                                <AlertItem
-                                    title="Maintenance Due"
-                                    details="SC001 is due for routine service"
-                                    time="1 hour ago"
-                                />
-                                <AlertItem
-                                    title="Geo-fence Violation"
-                                    details="SC002 detected outside operational area"
-                                    time="2 hours ago"
-                                />
+                                {loading ? (
+                                    [...Array(3)].map((_, i) => (
+                                        <div key={i} className="h-20 bg-slate-50 border border-slate-100 rounded-2xl animate-pulse" />
+                                    ))
+                                ) : alerts.length > 0 ? (
+                                    alerts.map((alert, index) => (
+                                        <AlertItem
+                                            key={index}
+                                            title={alert.title}
+                                            details={alert.description}
+                                            time={alert.time}
+                                        />
+                                    ))
+                                ) : (
+                                    <div className="text-center py-6 text-slate-300 font-medium text-xs border-2 border-dashed border-slate-50 rounded-2xl">No active alerts</div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -145,6 +181,7 @@ export default function Dashboard() {
         </MainLayout>
     )
 }
+
 
 function ActivityItem({ icon, title, details, time }: { icon: ReactNode, title: string, details: string, time: string }) {
     return (

@@ -21,9 +21,9 @@ const AddVehicle = lazy(() => import("./pages/AddVehicle"))
 
 // Loading component
 const PageLoader = () => (
-    <div className="flex items-center justify-center h-screen bg-slate-50">
-        <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
-    </div>
+  <div className="flex items-center justify-center h-screen bg-slate-50">
+    <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
+  </div>
 )
 
 function App() {

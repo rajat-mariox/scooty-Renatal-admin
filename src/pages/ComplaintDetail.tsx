@@ -3,26 +3,108 @@ import {
     Phone,
     CircleDollarSign,
     Info,
-    X
+    X,
+    RefreshCw,
+    AlertCircle
 } from "lucide-react"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function ComplaintDetail() {
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
+    const id = searchParams.get('id')
+
     const [status, setStatus] = useState("Pending")
     const [isEscalateModalOpen, setIsEscalateModalOpen] = useState(false)
     const [isResolveModalOpen, setIsResolveModalOpen] = useState(false)
+    const [complaintData, setComplaintData] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [actionLoading, setActionLoading] = useState(false)
 
-    const complaintData = {
-        id: "C001",
-        date: "2026-02-23",
-        userName: "Sanjay Verma",
-        phone: "+91 99123 45678",
-        relatedRide: "R003",
-        issueType: "Vehicle stopped mid-ride",
-        description: "The scooter suddenly stopped working during my ride. Battery was showing 40%."
+    useEffect(() => {
+        const fetchTicketDetails = async () => {
+            if (!id) {
+                setError("No ticket ID provided")
+                setLoading(false)
+                return
+            }
+
+            setLoading(true)
+            try {
+                const response = await stationAdminApi.getTicketDetail(id)
+                const data = (response as any).data || response
+                
+                const formattedData = {
+                    id: data.ticketId || data.id || id,
+                    date: data.date || data.createdAt ? new Date(data.date || data.createdAt).toISOString().split('T')[0] : "N/A",
+                    userName: data.userName || data.user?.name || "Unknown User",
+                    phone: data.phone || data.user?.phone || "N/A",
+                    relatedRide: data.rideId || data.ride?.id || "N/A",
+                    issueType: data.issue || data.subject || "General Support",
+                    description: data.description || "No description provided."
+                }
+                
+                setComplaintData(formattedData)
+                setStatus(data.status || "Pending")
+            } catch (err: any) {
+                console.error("Failed to fetch ticket details:", err)
+                setError(err.response?.data?.message || "Failed to load ticket details")
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchTicketDetails()
+    }, [id])
+
+    const handleResolve = async () => {
+        setActionLoading(true)
+        try {
+            // Check if updateTicketStatus exists in stationAdminApi, if not just update local state
+            if ((stationAdminApi as any).updateTicketStatus) {
+                await (stationAdminApi as any).updateTicketStatus(id as string, { status: 'Resolved' })
+            }
+            setStatus("Resolved")
+        } catch (error) {
+            console.error("Failed to resolve ticket:", error)
+        } finally {
+            setActionLoading(false)
+            setIsResolveModalOpen(false)
+        }
+    }
+
+    if (loading) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <RefreshCw className="animate-spin text-orange-500" size={48} />
+                    <span className="text-lg font-bold text-slate-500">Loading Complaint Details...</span>
+                </div>
+            </MainLayout>
+        )
+    }
+
+    if (error || !complaintData) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center">
+                        <AlertCircle className="text-rose-500" size={40} />
+                    </div>
+                    <span className="text-lg font-bold text-slate-700">{error || "Complaint not found"}</span>
+                    <button 
+                        onClick={() => navigate("/support")}
+                        className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all mt-4"
+                    >
+                        Back to Support
+                    </button>
+                </div>
+            </MainLayout>
+        )
     }
 
     return (
@@ -46,7 +128,7 @@ export default function ComplaintDetail() {
                     </div>
                     <div className="pt-10">
                         <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${
-                            status === "Resolved" 
+                            status === "Resolved" || status === "Closed" 
                             ? "bg-green-100 text-green-600" 
                             : "bg-yellow-100 text-yellow-600"
                         }`}>
@@ -71,7 +153,16 @@ export default function ComplaintDetail() {
                                 <InfoItem label="Phone" value={complaintData.phone} />
                                 <div>
                                     <span className="text-[12px] font-semibold text-slate-400 block mb-1">Related Ride</span>
-                                    <p className="text-[14px] font-bold text-[#FF6A1F]">{complaintData.relatedRide}</p>
+                                    {complaintData.relatedRide !== "N/A" ? (
+                                        <button 
+                                            onClick={() => navigate(`/rides/details?id=${complaintData.relatedRide}`)}
+                                            className="text-[14px] font-bold text-[#FF6A1F] hover:underline"
+                                        >
+                                            {complaintData.relatedRide}
+                                        </button>
+                                    ) : (
+                                        <p className="text-[14px] font-bold text-slate-800">N/A</p>
+                                    )}
                                 </div>
                                 <InfoItem label="Issue Type" value={complaintData.issueType} />
                             </div>
@@ -94,14 +185,17 @@ export default function ComplaintDetail() {
                         {/* Contact User Card */}
                         <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
                             <h3 className="text-[16px] font-bold text-slate-800 mb-6">Contact User</h3>
-                            <button className="w-full h-14 flex items-center justify-center gap-3 border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold hover:bg-orange-50 transition-all text-[14px]">
+                            <button 
+                                onClick={() => window.location.href = `tel:${complaintData.phone}`}
+                                className="w-full h-14 flex items-center justify-center gap-3 border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold hover:bg-orange-50 transition-all text-[14px]"
+                            >
                                 <Phone size={20} />
                                 Call {complaintData.userName}
                             </button>
                         </div>
 
                         {/* Issue Refund Card - Hidden if resolved */}
-                        {status !== "Resolved" && (
+                        {status !== "Resolved" && status !== "Closed" && (
                             <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
                                 <div className="flex items-center gap-3 mb-6">
                                     <CircleDollarSign size={20} className="text-slate-800" />
@@ -114,9 +208,9 @@ export default function ComplaintDetail() {
                         )}
 
                         {/* Actions Card */}
-                        <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
-                            <h3 className="text-[16px] font-bold text-slate-800 mb-6">Actions</h3>
-                            {status !== "Resolved" && (
+                        {status !== "Resolved" && status !== "Closed" && (
+                            <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
+                                <h3 className="text-[16px] font-bold text-slate-800 mb-6">Actions</h3>
                                 <div className="space-y-4">
                                     <button 
                                         onClick={() => setIsResolveModalOpen(true)}
@@ -131,8 +225,8 @@ export default function ComplaintDetail() {
                                         Escalate to Super Admin
                                     </button>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -174,17 +268,17 @@ export default function ComplaintDetail() {
                         <div className="flex items-center justify-end gap-6">
                             <button 
                                 onClick={() => setIsResolveModalOpen(false)}
-                                className="text-slate-500 font-bold hover:text-slate-800 transition-colors text-[14px]"
+                                disabled={actionLoading}
+                                className="text-slate-500 font-bold hover:text-slate-800 transition-colors text-[14px] disabled:opacity-50"
                             >
                                 Cancel
                             </button>
                             <button 
-                                onClick={() => {
-                                    setStatus("Resolved");
-                                    setIsResolveModalOpen(false);
-                                }}
-                                className="bg-[#FF6A1F] hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-sm text-[14px]"
+                                onClick={handleResolve}
+                                disabled={actionLoading}
+                                className="flex items-center gap-2 bg-[#FF6A1F] hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-sm text-[14px] disabled:opacity-70"
                             >
+                                {actionLoading && <RefreshCw size={16} className="animate-spin" />}
                                 Mark Resolved
                             </button>
                         </div>

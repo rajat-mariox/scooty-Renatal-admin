@@ -1,42 +1,44 @@
-import { Search } from "lucide-react"
-import { useState } from "react"
+import { Search, RefreshCw } from "lucide-react"
+import { useState, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
-
-const bookings = [
-    {
-        id: "B001",
-        user: "Amit Kumar",
-        phone: "+91 99887 76655",
-        slotTime: "Today 4:00 PM",
-        vehicle: "SC001",
-        status: "Confirmed",
-        payment: "Paid"
-    },
-    {
-        id: "B002",
-        user: "Neha Gupta",
-        phone: "+91 88776 65544",
-        slotTime: "Today 5:30 PM",
-        vehicle: "Not Assigned",
-        status: "Pending",
-        payment: "Pending"
-    },
-    {
-        id: "B003",
-        user: "Vikram Mehta",
-        phone: "+91 77665 54433",
-        slotTime: "Tomorrow 10:00 AM",
-        vehicle: "SC003",
-        status: "Confirmed",
-        payment: "Paid"
-    }
-]
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function BookingControl() {
-    const [bookingList, setBookingList] = useState(bookings)
+    const [bookingList, setBookingList] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
+    const [actionLoading, setActionLoading] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
     const [modalType, setModalType] = useState<'approve' | 'cancel' | null>(null)
+
+    const fetchBookings = async () => {
+        setLoading(true)
+        try {
+            const response = await stationAdminApi.getBookings()
+            const data = (response as any).data || response
+            const bookings = Array.isArray(data.bookings) ? data.bookings : (Array.isArray(data) ? data : [])
+            
+            const mappedBookings = bookings.map((b: any) => ({
+                id: b.bookingId || b.id || "N/A",
+                user: b.userName || b.user?.name || "Unknown User",
+                phone: b.phone || b.user?.phone || "N/A",
+                slotTime: b.slotTime || b.createdAt || "N/A",
+                vehicle: b.vehicleId || b.vehicle?.id || "Not Assigned",
+                status: b.status || "Pending",
+                payment: b.paymentStatus || b.payment || "Pending"
+            }))
+            
+            setBookingList(mappedBookings)
+        } catch (error) {
+            console.error("Failed to fetch bookings:", error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchBookings()
+    }, [])
 
     const filteredBookings = bookingList.filter((booking) => {
         const query = searchQuery.toLowerCase()
@@ -47,20 +49,21 @@ export default function BookingControl() {
         )
     })
 
-    const handleAction = (id: string, type: 'approve' | 'cancel') => {
-        setBookingList(prev => prev.map(b => {
-            if (b.id === id) {
-                return { 
-                    ...b, 
-                    status: type === 'approve' ? 'Confirmed' : 'Cancelled',
-                    payment: type === 'approve' ? 'Paid' : b.payment,
-                    vehicle: type === 'approve' && b.vehicle === 'Not Assigned' ? 'SC004' : b.vehicle
-                }
-            }
-            return b
-        }))
-        setModalType(null)
-        setSelectedBookingId(null)
+    const handleAction = async (id: string, type: 'approve' | 'cancel') => {
+        setActionLoading(true)
+        try {
+            await stationAdminApi.approveBooking({
+                bookingId: id,
+                status: type === 'approve' ? 'Confirmed' : 'Cancelled'
+            })
+            await fetchBookings()
+        } catch (error) {
+            console.error(`Failed to ${type} booking:`, error)
+        } finally {
+            setActionLoading(false)
+            setModalType(null)
+            setSelectedBookingId(null)
+        }
     }
 
     return (
@@ -68,9 +71,12 @@ export default function BookingControl() {
             <div className="space-y-6 max-w-[1500px] font-['Poppins']">
 
                 {/* Header title section */}
-                <div className="space-y-1">
-                    <h2 className="text-[24px] font-bold text-slate-800 tracking-tight">Booking Control</h2>
-                    <p className="text-slate-400 font-medium text-[15px]">Manage all ride bookings and reservations</p>
+                <div className="flex justify-between items-end">
+                    <div className="space-y-1">
+                        <h2 className="text-[24px] font-bold text-slate-800 tracking-tight">Booking Control</h2>
+                        <p className="text-slate-400 font-medium text-[15px]">Manage all ride bookings and reservations</p>
+                    </div>
+                    {loading && <RefreshCw className="animate-spin text-orange-500 mb-2" size={20} />}
                 </div>
 
                 {/* Search Input Card */}
@@ -89,7 +95,15 @@ export default function BookingControl() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm shadow-slate-200/20">
+                <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm shadow-slate-200/20 relative min-h-[300px]">
+                    {loading ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
+                            <div className="flex flex-col items-center gap-3">
+                                <RefreshCw className="animate-spin text-orange-500" size={32} />
+                                <span className="text-sm font-bold text-slate-500">Loading Bookings...</span>
+                            </div>
+                        </div>
+                    ) : null}
                     <div className="">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -105,7 +119,7 @@ export default function BookingControl() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100/50">
-                                {filteredBookings.map((booking) => (
+                                {filteredBookings.length > 0 ? filteredBookings.map((booking) => (
                                     <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-5">
                                             <span className="text-[14px] font-bold text-slate-900">{booking.id}</span>
@@ -133,7 +147,7 @@ export default function BookingControl() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${booking.payment === 'Paid' ? 'bg-green-50 text-green-600' :
+                                            <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${(booking.payment === 'Paid' || booking.payment === 'Success') ? 'bg-green-50 text-green-600' :
                                                 'bg-yellow-50 text-yellow-600'
                                                 }`}>
                                                 {booking.payment}
@@ -166,7 +180,13 @@ export default function BookingControl() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                )) : !loading && (
+                                    <tr>
+                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-2xl">
+                                            No bookings found matching your criteria
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -188,14 +208,17 @@ export default function BookingControl() {
                                         setModalType(null)
                                         setSelectedBookingId(null)
                                     }}
-                                    className="text-[14px] font-bold text-slate-600 hover:text-slate-900 transition-colors"
+                                    disabled={actionLoading}
+                                    className="text-[14px] font-bold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => selectedBookingId && handleAction(selectedBookingId, 'cancel')}
-                                    className="px-8 py-4 bg-[#FF3B30] text-white text-[14px] font-bold rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100"
+                                    disabled={actionLoading}
+                                    className="px-8 py-4 bg-[#FF3B30] text-white text-[14px] font-bold rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 flex items-center justify-center gap-2 disabled:opacity-70"
                                 >
+                                    {actionLoading ? <RefreshCw size={16} className="animate-spin" /> : null}
                                     Cancel Booking
                                 </button>
                             </div>
@@ -219,14 +242,17 @@ export default function BookingControl() {
                                         setModalType(null)
                                         setSelectedBookingId(null)
                                     }}
-                                    className="text-[14px] font-bold text-slate-600 hover:text-slate-900 transition-colors"
+                                    disabled={actionLoading}
+                                    className="text-[14px] font-bold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => selectedBookingId && handleAction(selectedBookingId, 'approve')}
-                                    className="px-10 py-4 bg-[#00D362] text-white text-[14px] font-bold rounded-2xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100"
+                                    disabled={actionLoading}
+                                    className="px-10 py-4 bg-[#00D362] text-white text-[14px] font-bold rounded-2xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 disabled:opacity-70"
                                 >
+                                    {actionLoading ? <RefreshCw size={16} className="animate-spin" /> : null}
                                     Approve
                                 </button>
                             </div>
@@ -238,3 +264,4 @@ export default function BookingControl() {
         </MainLayout>
     )
 }
+

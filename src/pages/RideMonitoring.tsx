@@ -1,38 +1,49 @@
 import {
     Search,
-    Map
+    Map,
+    RefreshCw
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function RideMonitoring() {
     const navigate = useNavigate()
-
-    const rides = [
-        {
-            id: "R001",
-            riderName: "Rahul Sharma",
-            riderPhone: "+91 98765 43210",
-            vehicle: "SC002",
-            duration: "15:32",
-            distance: "4.2 km",
-            battery: 45,
-            status: "Ongoing"
-        },
-        {
-            id: "R002",
-            riderName: "Priya Singh",
-            riderPhone: "+91 87654 32109",
-            vehicle: "SC005",
-            duration: "08:15",
-            distance: "2.8 km",
-            battery: 67,
-            status: "Ongoing"
-        },
-    ]
-
+    const [rides, setRides] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
+
+    const fetchRides = async () => {
+        setLoading(true)
+        try {
+            const response = await stationAdminApi.getRides()
+            const data = (response as any).data || response
+            const fetchedRides = Array.isArray(data.rides) ? data.rides : (Array.isArray(data) ? data : [])
+            
+            const mappedRides = fetchedRides.map((r: any) => ({
+                id: r.rideId || r.id || "N/A",
+                riderName: r.userName || r.user?.name || "Unknown Rider",
+                riderPhone: r.phone || r.user?.phone || "N/A",
+                vehicle: r.vehicleId || r.vehicle?.id || "N/A",
+                duration: r.duration || "00:00",
+                distance: r.distance ? `${r.distance} km` : "0 km",
+                battery: r.batteryLevel !== undefined ? r.batteryLevel : (r.battery || 0),
+                status: r.status || "Ongoing"
+            }))
+            
+            setRides(mappedRides)
+        } catch (error) {
+            console.error("Failed to fetch rides:", error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchRides()
+    }, [])
+
     const filteredRides = rides.filter((ride) => {
         const query = searchQuery.toLowerCase()
         return (
@@ -46,9 +57,12 @@ export default function RideMonitoring() {
         <MainLayout>
             <div className="space-y-6">
                 {/* Header Section */}
-                <div>
-                    <h2 className="text-xl font-bold text-slate-900">Ride Monitoring</h2>
-                    <p className="text-slate-500 text-sm mt-1">Monitor all active and recent rides in real-time</p>
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900">Ride Monitoring</h2>
+                        <p className="text-slate-500 text-sm mt-1">Monitor all active and recent rides in real-time</p>
+                    </div>
+                    {loading && <RefreshCw className="animate-spin text-orange-500 mb-1" size={20} />}
                 </div>
 
                 {/* Search Bar Container */}
@@ -66,7 +80,15 @@ export default function RideMonitoring() {
                 </div>
 
                 {/* Rides Table Container */}
-                <div className="bg-white rounded-[2rem] border border-slate-100/80 shadow-sm overflow-hidden p-6">
+                <div className="bg-white rounded-[2rem] border border-slate-100/80 shadow-sm overflow-hidden p-6 relative min-h-[400px]">
+                    {loading ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
+                            <div className="flex flex-col items-center gap-3">
+                                <RefreshCw className="animate-spin text-orange-500" size={32} />
+                                <span className="text-sm font-bold text-slate-500">Loading Rides...</span>
+                            </div>
+                        </div>
+                    ) : null}
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-slate-50">
@@ -81,7 +103,7 @@ export default function RideMonitoring() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50/50">
-                            {filteredRides.map((ride) => (
+                            {filteredRides.length > 0 ? filteredRides.map((ride) => (
                                 <tr key={ride.id} className="hover:bg-slate-50/30 transition-all group">
                                     <td className="px-6 py-8 text-sm font-bold text-slate-700">{ride.id}</td>
                                     <td className="px-6 py-8">
@@ -105,14 +127,20 @@ export default function RideMonitoring() {
                                     </td>
                                     <td className="px-6 py-8">
                                         <button
-                                            onClick={() => navigate("/ride/details")}
+                                            onClick={() => navigate(`/ride/details?id=${ride.id}`)}
                                             className="px-6 py-2 bg-[#FF6A1F] text-white text-[10px] font-extrabold rounded-xl shadow-lg shadow-orange-100 hover:bg-orange-600 transition-all uppercase tracking-wider"
                                         >
                                             View Details
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                            )) : !loading && (
+                                <tr>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-2xl">
+                                        No active or recent rides found
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -128,3 +156,4 @@ export default function RideMonitoring() {
         </MainLayout>
     )
 }
+

@@ -10,18 +10,29 @@ import {
     CircleDot,
     X,
     Timer,
-    Compass
+    Compass,
+    RefreshCw,
+    AlertCircle
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
+import { stationAdminApi } from "../services/stationAdminApi"
 
 export default function RideDetail() {
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
+    const id = searchParams.get('id')
+    
     const [isLockModalOpen, setIsLockModalOpen] = useState(false)
     const [isForceEndModalOpen, setIsForceEndModalOpen] = useState(false)
     const [showToast, setShowToast] = useState(false)
     const [toastMessage, setToastMessage] = useState("")
+    
+    const [ride, setRide] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [actionLoading, setActionLoading] = useState(false)
 
     useEffect(() => {
         if (showToast) {
@@ -32,12 +43,107 @@ export default function RideDetail() {
         }
     }, [showToast])
 
+    useEffect(() => {
+        const fetchRideDetails = async () => {
+            if (!id) {
+                setError("No ride ID provided")
+                setLoading(false)
+                return
+            }
+            
+            setLoading(true)
+            try {
+                const response = await stationAdminApi.getRideDetails(id)
+                const data = (response as any).data || response
+                setRide(data)
+                setError(null)
+            } catch (err: any) {
+                console.error("Failed to fetch ride details:", err)
+                setError(err.response?.data?.message || "Failed to load ride details")
+            } finally {
+                setLoading(false)
+            }
+        }
+        
+        fetchRideDetails()
+    }, [id])
+
+    const handleForceEnd = async () => {
+        setActionLoading(true)
+        try {
+            if ((stationAdminApi as any).forceEndRide) {
+                await (stationAdminApi as any).forceEndRide(id as string)
+            }
+            setToastMessage("Ride ended successfully")
+            setShowToast(true)
+            setIsForceEndModalOpen(false)
+            if (ride) setRide({ ...ride, status: 'Completed' })
+        } catch (err: any) {
+            console.error("Failed to end ride:", err)
+            // Show error toast logic can be added here
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    const handleLockVehicle = async () => {
+        setActionLoading(true)
+        try {
+            if ((stationAdminApi as any).lockVehicle) {
+                await (stationAdminApi as any).lockVehicle(ride?.vehicleId || ride?.vehicle?.id)
+            }
+            setToastMessage("Vehicle locked successfully")
+            setShowToast(true)
+            setIsLockModalOpen(false)
+        } catch (err: any) {
+            console.error("Failed to lock vehicle:", err)
+            // Show error toast logic can be added here
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    if (loading) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <RefreshCw className="animate-spin text-orange-500" size={48} />
+                    <span className="text-lg font-bold text-slate-500">Loading Ride Details...</span>
+                </div>
+            </MainLayout>
+        )
+    }
+
+    if (error || !ride) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center">
+                        <AlertCircle className="text-rose-500" size={40} />
+                    </div>
+                    <span className="text-lg font-bold text-slate-700">{error || "Ride not found"}</span>
+                    <button 
+                        onClick={() => navigate("/ride-monitoring")}
+                        className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all mt-4"
+                    >
+                        Back to Rides
+                    </button>
+                </div>
+            </MainLayout>
+        )
+    }
+
+    const rideId = ride.rideId || ride.id || id
+    const status = ride.status || "Ongoing"
+    const isOngoing = status === "Ongoing" || status === "Active" || status === "In Progress"
+    const userPhone = ride.user?.phone || ride.userPhone || "N/A"
+
     return (
         <MainLayout>
             <div className="space-y-8 max-w-7xl mx-auto">
 
                 {/* Navigation & Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="space-y-4">
                         <button
                             onClick={() => navigate("/ride-monitoring")}
@@ -47,52 +153,63 @@ export default function RideDetail() {
                             Back to Rides
                         </button>
                         <div className="flex flex-col gap-2">
-                            <h2 className="text-xl font-extrabold text-slate-900">Ride Details - R001</h2>
+                            <h2 className="text-xl font-extrabold text-slate-900">Ride Details - {rideId}</h2>
                             <div>
-                                <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                                    Ongoing
+                                <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+                                    isOngoing ? 'bg-green-50 text-green-600' :
+                                    status === 'Completed' ? 'bg-slate-100 text-slate-600' :
+                                    'bg-rose-50 text-rose-600'
+                                }`}>
+                                    {status}
                                 </span>
                             </div>
                         </div>
                     </div>
-                    <div className="flex gap-4">
-                        <button className="px-6 py-2.5 border-[1.5px] border-[#FF6A1F] text-[#FF6A1F] font-bold rounded-xl hover:bg-orange-50 transition-all text-sm flex items-center gap-2">
+                    <div className="flex flex-wrap gap-4">
+                        <button 
+                            onClick={() => window.location.href = `tel:${userPhone}`}
+                            className="px-6 py-2.5 border-[1.5px] border-[#FF6A1F] text-[#FF6A1F] font-bold rounded-xl hover:bg-orange-50 transition-all text-sm flex items-center gap-2"
+                        >
                             <Phone size={18} />
                             Call Rider
                         </button>
-                        <button
-                            onClick={() => setIsForceEndModalOpen(true)}
-                            className="px-6 py-2.5 bg-[#F43F5E] text-white font-bold rounded-xl hover:bg-rose-600 transition-all text-sm flex items-center gap-2"
-                        >
-                            <CircleDot size={18} />
-                            Force End Ride
-                        </button>
+                        {isOngoing && (
+                            <button
+                                onClick={() => setIsForceEndModalOpen(true)}
+                                className="px-6 py-2.5 bg-[#F43F5E] text-white font-bold rounded-xl hover:bg-rose-600 transition-all text-sm flex items-center gap-2"
+                            >
+                                <CircleDot size={18} />
+                                Force End Ride
+                            </button>
+                        )}
                     </div>
                 </div>
 
                 {/* Content Grid */}
-                <div className="grid grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
                     {/* Left Column: Map and Timeline */}
-                    <div className="col-span-8 space-y-6">
+                    <div className="col-span-1 md:col-span-8 space-y-6">
 
                         {/* Live Location / Map Placeholder */}
                         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 space-y-6">
-                            <h3 className="font-bold text-slate-800 text-sm">Live Location</h3>
+                            <h3 className="font-bold text-slate-800 text-sm">{isOngoing ? 'Live Location' : 'Route Map'}</h3>
                             <div className="relative aspect-[16/8] bg-slate-100 rounded-3xl flex flex-col items-center justify-center overflow-hidden">
                                 {/* Speed indicator overlay */}
-                                <div className="absolute top-6 left-6 bg-white p-4 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 z-10 text-center min-w-[120px]">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Current Speed</p>
-                                    <p className="text-2xl font-black text-[#FF6A1F]">35 km/h</p>
-                                </div>
+                                {isOngoing && (
+                                    <div className="absolute top-4 sm:top-6 left-4 sm:left-6 bg-white p-3 sm:p-4 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 z-10 text-center min-w-[100px] sm:min-w-[120px]">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Current Speed</p>
+                                        <p className="text-xl sm:text-2xl font-black text-[#FF6A1F]">{ride.currentSpeed || "0"} km/h</p>
+                                    </div>
+                                )}
 
                                 <div className="flex flex-col items-center gap-4 text-slate-300">
                                     <div className="w-16 h-16 rounded-full bg-slate-200/50 flex items-center justify-center">
                                         <MapPin size={32} className="text-slate-400 opacity-50" />
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-base font-bold text-slate-500">Live Map View</p>
-                                        <p className="text-xs font-bold text-slate-400">Connaught Place</p>
+                                        <p className="text-base font-bold text-slate-500">{isOngoing ? 'Live Map View' : 'Route View'}</p>
+                                        <p className="text-xs font-bold text-slate-400">{ride.currentLocation || ride.destination || "Location Data Unavailable"}</p>
                                     </div>
                                 </div>
                             </div>
@@ -105,15 +222,15 @@ export default function RideDetail() {
                                 <TimelineItem
                                     icon={<MapPin size={16} className="text-green-500" />}
                                     title="Ride Started"
-                                    location="Rajiv Chowk Metro"
-                                    time="15 mins ago"
+                                    location={ride.startLocation || ride.source || "Unknown Location"}
+                                    time={ride.startTime || ride.createdAt ? new Date(ride.startTime || ride.createdAt).toLocaleString() : "Recently"}
                                     isFirst
                                 />
                                 <TimelineItem
-                                    icon={<Navigation size={16} className="text-blue-500" />}
-                                    title="Currently At"
-                                    location="Connaught Place"
-                                    time="Active"
+                                    icon={<Navigation size={16} className={isOngoing ? "text-blue-500" : "text-slate-500"} />}
+                                    title={isOngoing ? "Currently At" : "Ended At"}
+                                    location={ride.currentLocation || ride.destination || ride.endLocation || "Unknown Location"}
+                                    time={isOngoing ? "Active" : (ride.endTime || ride.updatedAt ? new Date(ride.endTime || ride.updatedAt).toLocaleString() : "N/A")}
                                     isLast
                                 />
                             </div>
@@ -121,7 +238,7 @@ export default function RideDetail() {
                     </div>
 
                     {/* Right Column: Info and Stats */}
-                    <div className="col-span-4 space-y-6">
+                    <div className="col-span-1 md:col-span-4 space-y-6">
 
                         {/* Rider Information */}
                         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 space-y-6">
@@ -129,56 +246,60 @@ export default function RideDetail() {
                             <div className="space-y-5">
                                 <div>
                                     <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Name</p>
-                                    <p className="text-sm font-bold text-slate-800 mt-1">Rahul Sharma</p>
+                                    <p className="text-sm font-bold text-slate-800 mt-1">{ride.user?.name || ride.userName || "Unknown User"}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Phone</p>
-                                    <p className="text-sm font-bold text-slate-800 mt-1">+91 98765 43210</p>
+                                    <p className="text-sm font-bold text-slate-800 mt-1">{userPhone}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Vehicle</p>
-                                    <p className="text-sm font-bold text-slate-800 mt-1">SC002</p>
+                                    <p className="text-sm font-bold text-[#FF6A1F] mt-1 cursor-pointer hover:underline" onClick={() => navigate(`/fleet/details?id=${ride.vehicleId || ride.vehicle?.id}`)}>
+                                        {ride.vehicleId || ride.vehicle?.id || ride.vehicle?.model || "Unknown"}
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Live Statistics */}
                         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 space-y-6">
-                            <h3 className="font-bold text-slate-800 text-sm">Live Statistics</h3>
+                            <h3 className="font-bold text-slate-800 text-sm">{isOngoing ? 'Live Statistics' : 'Ride Statistics'}</h3>
                             <div className="space-y-4">
-                                <StatRow icon={<Timer size={18} />} label="Duration" value="15:32" />
-                                <StatRow icon={<Compass size={18} />} label="Distance" value="4.2 km" />
-                                <StatRow icon={<Zap size={18} />} label="Battery" value="45%" isWarning />
+                                <StatRow icon={<Timer size={18} />} label="Duration" value={ride.duration || "N/A"} />
+                                <StatRow icon={<Compass size={18} />} label="Distance" value={ride.distance ? `${ride.distance} km` : "N/A"} />
+                                <StatRow icon={<Zap size={18} />} label="Battery" value={`${ride.battery || ride.vehicle?.batteryLevel || 0}%`} isWarning={(ride.battery || ride.vehicle?.batteryLevel || 100) < 20} />
 
                                 <div className="pt-2">
-                                    <div className="p-5 border-2 border-[#FF6A1F] rounded-2xl flex items-center justify-between bg-white">
-                                        <span className="text-sm font-bold text-slate-700">Current Fare</span>
-                                        <span className="text-xl font-black text-[#FF6A1F]">₹42</span>
+                                    <div className={`p-5 border-2 ${isOngoing ? 'border-[#FF6A1F]' : 'border-slate-200'} rounded-2xl flex items-center justify-between bg-white`}>
+                                        <span className="text-sm font-bold text-slate-700">{isOngoing ? 'Current Fare' : 'Total Fare'}</span>
+                                        <span className={`text-xl font-black ${isOngoing ? 'text-[#FF6A1F]' : 'text-slate-800'}`}>₹{ride.fare || "0"}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Quick Actions */}
-                        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 space-y-6">
-                            <h3 className="text-sm font-black text-slate-700">Quick Actions</h3>
-                            <div className="space-y-3">
-                                <button
-                                    onClick={() => setIsLockModalOpen(true)}
-                                    className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#FF6A1F] rounded-2xl text-[#FF6A1F] font-bold text-sm hover:bg-orange-50 transition-all"
-                                >
-                                    <Lock size={18} />
-                                    Lock Vehicle
-                                </button>
-                                <button
-                                    onClick={() => setIsForceEndModalOpen(true)}
-                                    className="w-full flex items-center justify-center gap-3 py-4 bg-[#F43F5E] rounded-2xl text-white font-bold text-sm hover:bg-rose-600 transition-all"
-                                >
-                                    <CircleDot size={18} />
-                                    Force End Ride
-                                </button>
+                        {isOngoing && (
+                            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 space-y-6">
+                                <h3 className="text-sm font-black text-slate-700">Quick Actions</h3>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setIsLockModalOpen(true)}
+                                        className="w-full flex items-center justify-center gap-3 py-4 border-2 border-[#FF6A1F] rounded-2xl text-[#FF6A1F] font-bold text-sm hover:bg-orange-50 transition-all"
+                                    >
+                                        <Lock size={18} />
+                                        Lock Vehicle
+                                    </button>
+                                    <button
+                                        onClick={() => setIsForceEndModalOpen(true)}
+                                        className="w-full flex items-center justify-center gap-3 py-4 bg-[#F43F5E] rounded-2xl text-white font-bold text-sm hover:bg-rose-600 transition-all shadow-sm"
+                                    >
+                                        <CircleDot size={18} />
+                                        Force End Ride
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                     </div>
                 </div>
@@ -196,18 +317,17 @@ export default function RideDetail() {
                             <div className="flex items-center justify-end gap-10">
                                 <button
                                     onClick={() => setIsLockModalOpen(false)}
-                                    className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+                                    disabled={actionLoading}
+                                    className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        setIsLockModalOpen(false)
-                                        setToastMessage("Vehicle locked successfully")
-                                        setShowToast(true)
-                                    }}
-                                    className="px-10 py-4 bg-[#F43F5E] text-white text-sm font-bold rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100"
+                                    onClick={handleLockVehicle}
+                                    disabled={actionLoading}
+                                    className="flex items-center gap-2 px-10 py-4 bg-[#F43F5E] text-white text-sm font-bold rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 disabled:opacity-70"
                                 >
+                                    {actionLoading && <RefreshCw size={16} className="animate-spin" />}
                                     Lock Vehicle
                                 </button>
                             </div>
@@ -228,18 +348,17 @@ export default function RideDetail() {
                             <div className="flex items-center justify-end gap-10">
                                 <button
                                     onClick={() => setIsForceEndModalOpen(false)}
-                                    className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+                                    disabled={actionLoading}
+                                    className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        setIsForceEndModalOpen(false)
-                                        setToastMessage("Ride ended successfully")
-                                        setShowToast(true)
-                                    }}
-                                    className="px-10 py-4 bg-[#F43F5E] text-white text-sm font-bold rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100"
+                                    onClick={handleForceEnd}
+                                    disabled={actionLoading}
+                                    className="flex items-center gap-2 px-10 py-4 bg-[#F43F5E] text-white text-sm font-bold rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 disabled:opacity-70"
                                 >
+                                    {actionLoading && <RefreshCw size={16} className="animate-spin" />}
                                     End Ride
                                 </button>
                             </div>
