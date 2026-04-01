@@ -9,7 +9,7 @@ import {
 import { useNavigate } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import { useState, useEffect, useRef } from "react"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function FleetManagement() {
     const navigate = useNavigate()
@@ -41,7 +41,7 @@ export default function FleetManagement() {
     const fetchVehicles = async () => {
         setLoading(true)
         try {
-            const response = await stationAdminApi.getVehicles()
+            const response = await adminApi.getVehicles()
             const data = (response as any).data || response
             
             // Format data if needed so it matches the table expectation
@@ -74,7 +74,7 @@ export default function FleetManagement() {
             let statusToUpdate = modalAction.type === 'charging' ? 'Charging' : 
                                  modalAction.type === 'maintenance' ? 'Maintenance' : 'Active'
                                  
-            await stationAdminApi.updateVehicleStatus({
+            await adminApi.updateVehicleStatus({
                 vehicleId: modalAction.id,
                 status: statusToUpdate
             })
@@ -156,7 +156,7 @@ export default function FleetManagement() {
                         </div>
                         <div className="relative group">
                             <button className="flex items-center gap-8 px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all">
-                                Station Admin
+                                Select Station
                                 <ChevronDown size={14} className="text-slate-400" />
                             </button>
                         </div>

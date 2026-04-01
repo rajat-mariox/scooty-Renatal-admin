@@ -10,7 +10,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import { ReactNode, useState, useEffect } from "react"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function FleetDetail() {
     const navigate = useNavigate()
@@ -31,7 +31,7 @@ export default function FleetDetail() {
             
             setLoading(true)
             try {
-                const response = await stationAdminApi.getVehicleDetails(id)
+                const response = await adminApi.getVehicleDetails(id)
                 const data = (response as any).data || response
                 
                 // Set default structure if some properties are missing

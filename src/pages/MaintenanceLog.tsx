@@ -7,7 +7,7 @@ import {
 import { useNavigate } from "react-router-dom"
 import { useState, useRef, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function MaintenanceLog() {
     const navigate = useNavigate()
@@ -30,7 +30,7 @@ export default function MaintenanceLog() {
     useEffect(() => {
         const fetchVehicles = async () => {
             try {
-                const response = await stationAdminApi.getVehicles()
+                const response = await adminApi.getVehicles()
                 const data = (response as any).data || response
                 const fetchedVehicles = Array.isArray(data.vehicles) ? data.vehicles : (Array.isArray(data) ? data : [])
                 setVehicles(fetchedVehicles)
@@ -68,7 +68,7 @@ export default function MaintenanceLog() {
         setError(null)
 
         try {
-            // For file uploads, we normally use FormData, but checking stationAdminApi signature: createMaintenanceLog(data: any)
+            // For file uploads, we normally use FormData, but checking adminApi signature: createMaintenanceLog(data: any)
             // If it accepts JSON:
             const payload = {
                 vehicleId: formData.vehicleId,
@@ -78,7 +78,7 @@ export default function MaintenanceLog() {
                 status: 'Pending'
             }
             
-            await stationAdminApi.createMaintenanceLog(payload)
+            await adminApi.createMaintenanceLog(payload)
             navigate("/maintenance")
         } catch (err: any) {
             console.error("Failed to create maintenance log:", err)

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
-import { stationAdminApi } from "../services/stationAdminApi";
+import { adminApi } from "../services/adminApi";
 import {
   ArrowLeft,
   Save,
@@ -22,32 +22,32 @@ export default function AddVehicle() {
     station: "Station A",
     status: "Active",
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.registrationNo) {
-        setError("Registration Number is required");
-        return;
+      setError("Registration Number is required");
+      return;
     }
 
     setIsSubmitting(true);
     setError(null);
     try {
-        await stationAdminApi.addVehicle({
-            registrationNo: formData.registrationNo,
-            model: formData.model,
-            stationId: formData.station, // Ensure this maps to what the backend expects
-            status: formData.status
-        });
-        navigate("/fleet");
+      await adminApi.addVehicle({
+        registrationNo: formData.registrationNo,
+        model: formData.model,
+        stationId: formData.station, // Ensure this maps to what the backend expects
+        status: formData.status
+      });
+      navigate("/fleet");
     } catch (err: any) {
-        console.error("Failed to add vehicle:", err);
-        setError(err.response?.data?.message || "Failed to add vehicle");
+      console.error("Failed to add vehicle:", err);
+      setError(err.response?.data?.message || "Failed to add vehicle");
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -73,11 +73,11 @@ export default function AddVehicle() {
         </div>
 
         <div className="bg-white rounded-[2rem] border border-slate-100/80 shadow-sm p-8">
-          
+
           {error && (
             <div className="mb-8 bg-rose-50 text-rose-600 px-6 py-4 rounded-xl text-sm font-bold border border-rose-100 flex items-center justify-between">
-                <span>{error}</span>
-                <button type="button" onClick={() => setError(null)}><X size={16} /></button>
+              <span>{error}</span>
+              <button type="button" onClick={() => setError(null)}><X size={16} /></button>
             </div>
           )}
 

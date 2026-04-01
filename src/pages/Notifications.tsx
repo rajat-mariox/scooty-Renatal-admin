@@ -1,7 +1,7 @@
 import { Zap, Wrench, MapPin, Clock, Check, RefreshCw, AlertCircle } from "lucide-react"
 import MainLayout from "../layouts/MainLayout"
 import { ReactNode, useState, useEffect } from "react"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function Notifications() {
     const [notifications, setNotifications] = useState<any[]>([])
@@ -11,7 +11,7 @@ export default function Notifications() {
     const fetchNotifications = async () => {
         setLoading(true)
         try {
-            const response = await stationAdminApi.getNotifications()
+            const response = await adminApi.getNotifications()
             const data = (response as any).data || response
             const fetchedList = Array.isArray(data.notifications) ? data.notifications : (Array.isArray(data) ? data : [])
             setNotifications(fetchedList)
@@ -24,7 +24,7 @@ export default function Notifications() {
 
     const markAllAsRead = async () => {
         try {
-            await stationAdminApi.readAllNotifications()
+            await adminApi.readAllNotifications()
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
         } catch (error) {
             console.error("Failed to mark all as read:", error)

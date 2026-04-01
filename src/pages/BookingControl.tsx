@@ -1,7 +1,7 @@
 import { Search, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function BookingControl() {
     const [bookingList, setBookingList] = useState<any[]>([])
@@ -14,7 +14,7 @@ export default function BookingControl() {
     const fetchBookings = async () => {
         setLoading(true)
         try {
-            const response = await stationAdminApi.getBookings()
+            const response = await adminApi.getBookings()
             const data = (response as any).data || response
             const bookings = Array.isArray(data.bookings) ? data.bookings : (Array.isArray(data) ? data : [])
             
@@ -52,7 +52,7 @@ export default function BookingControl() {
     const handleAction = async (id: string, type: 'approve' | 'cancel') => {
         setActionLoading(true)
         try {
-            await stationAdminApi.approveBooking({
+            await adminApi.approveBooking({
                 bookingId: id,
                 status: type === 'approve' ? 'Confirmed' : 'Cancelled'
             })

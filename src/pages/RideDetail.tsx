@@ -17,18 +17,18 @@ import {
 import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function RideDetail() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const id = searchParams.get('id')
-    
+
     const [isLockModalOpen, setIsLockModalOpen] = useState(false)
     const [isForceEndModalOpen, setIsForceEndModalOpen] = useState(false)
     const [showToast, setShowToast] = useState(false)
     const [toastMessage, setToastMessage] = useState("")
-    
+
     const [ride, setRide] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -50,10 +50,10 @@ export default function RideDetail() {
                 setLoading(false)
                 return
             }
-            
+
             setLoading(true)
             try {
-                const response = await stationAdminApi.getRideDetails(id)
+                const response = await adminApi.getRideDetails(id)
                 const data = (response as any).data || response
                 setRide(data)
                 setError(null)
@@ -64,15 +64,15 @@ export default function RideDetail() {
                 setLoading(false)
             }
         }
-        
+
         fetchRideDetails()
     }, [id])
 
     const handleForceEnd = async () => {
         setActionLoading(true)
         try {
-            if ((stationAdminApi as any).forceEndRide) {
-                await (stationAdminApi as any).forceEndRide(id as string)
+            if ((adminApi as any).forceEndRide) {
+                await (adminApi as any).forceEndRide(id as string)
             }
             setToastMessage("Ride ended successfully")
             setShowToast(true)
@@ -89,8 +89,8 @@ export default function RideDetail() {
     const handleLockVehicle = async () => {
         setActionLoading(true)
         try {
-            if ((stationAdminApi as any).lockVehicle) {
-                await (stationAdminApi as any).lockVehicle(ride?.vehicleId || ride?.vehicle?.id)
+            if ((adminApi as any).lockVehicle) {
+                await (adminApi as any).lockVehicle(ride?.vehicleId || ride?.vehicle?.id)
             }
             setToastMessage("Vehicle locked successfully")
             setShowToast(true)
@@ -122,7 +122,7 @@ export default function RideDetail() {
                         <AlertCircle className="text-rose-500" size={40} />
                     </div>
                     <span className="text-lg font-bold text-slate-700">{error || "Ride not found"}</span>
-                    <button 
+                    <button
                         onClick={() => navigate("/ride-monitoring")}
                         className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all mt-4"
                     >
@@ -155,18 +155,17 @@ export default function RideDetail() {
                         <div className="flex flex-col gap-2">
                             <h2 className="text-xl font-extrabold text-slate-900">Ride Details - {rideId}</h2>
                             <div>
-                                <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider ${
-                                    isOngoing ? 'bg-green-50 text-green-600' :
-                                    status === 'Completed' ? 'bg-slate-100 text-slate-600' :
-                                    'bg-rose-50 text-rose-600'
-                                }`}>
+                                <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider ${isOngoing ? 'bg-green-50 text-green-600' :
+                                        status === 'Completed' ? 'bg-slate-100 text-slate-600' :
+                                            'bg-rose-50 text-rose-600'
+                                    }`}>
                                     {status}
                                 </span>
                             </div>
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-4">
-                        <button 
+                        <button
                             onClick={() => window.location.href = `tel:${userPhone}`}
                             className="px-6 py-2.5 border-[1.5px] border-[#FF6A1F] text-[#FF6A1F] font-bold rounded-xl hover:bg-orange-50 transition-all text-sm flex items-center gap-2"
                         >

@@ -2,7 +2,7 @@ import { Search, RefreshCw } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function UserSupport() {
     const navigate = useNavigate()
@@ -13,7 +13,7 @@ export default function UserSupport() {
     const fetchTickets = async () => {
         setLoading(true)
         try {
-            const response = await stationAdminApi.getTickets()
+            const response = await adminApi.getTickets()
             const data = (response as any).data || response
             const fetchedTickets = Array.isArray(data.tickets) ? data.tickets : (Array.isArray(data) ? data : [])
             

@@ -1,7 +1,7 @@
 import { User, Lock, Eye, EyeOff, RefreshCw, CheckCircle, AlertCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 // ─── Tiny toast helpers ───────────────────────────────────────────
 type ToastState = { message: string; type: "success" | "error" } | null
@@ -55,13 +55,16 @@ const PasswordInput = ({
 )
 
 export default function Settings() {
-    // ─── Profile state ────────────────────────────────────────────
+    // ─── Profile state ──────────────────────────────────────────────────
     const [profile, setProfile] = useState({
+        id: "",
         name: "",
         email: "",
         phone: "",
         station: "",
     })
+    const [stationId, setStationId] = useState("")
+    const [stationsList, setStationsList] = useState<{ _id: string; name: string }[]>([])
     const [profileLoading, setProfileLoading] = useState(true)
     const [profileSaving, setProfileSaving] = useState(false)
 
@@ -83,19 +86,66 @@ export default function Settings() {
         setTimeout(() => setToast(null), 3500)
     }
 
-    // ─── Fetch profile on mount ───────────────────────────────────
+    // ─── Fetch profile on mount ──────────────────────────────────────────────────
     useEffect(() => {
         const load = async () => {
             setProfileLoading(true)
             try {
-                const res = await stationAdminApi.getStationAdminDetails() as any
-                const d = res.data || res
-                setProfile({
-                    name: d.name || d.fullName || "",
-                    email: d.email || "",
-                    phone: d.phone || d.phoneNumber || "",
-                    station: d.stationName || d.station || "",
+                // Fetch the list of users to find the Super Admin details
+                const usersRes = await adminApi.getUsers().catch(() => null) as any
+
+                let newProfile = { id: "", name: "", email: "", phone: "", station: "" }
+
+                if (usersRes && (usersRes.code === 1 || usersRes.success || Array.isArray(usersRes.data))) {
+                    let usersList = []
+                    if (Array.isArray(usersRes.data)) {
+                        usersList = usersRes.data
+                    } else if (usersRes.data && Array.isArray(usersRes.data.users)) {
+                        usersList = usersRes.data.users
+                    }
+
+                    const adminUser = usersList.find((u: any) => u.role === "ADMIN")
+                    if (adminUser) {
+                        newProfile = {
+                            ...newProfile,
+                            id: adminUser._id || adminUser.id || "",
+                            name: adminUser.name || adminUser.fullName || "",
+                            email: adminUser.email || "",
+                            phone: adminUser.phone || adminUser.mobile || adminUser.phoneNumber || "",
+                            station: adminUser.stationName || adminUser.station || "",
+                        }
+                    }
+                }
+
+                // If no admin user found via users list, try local storage fallback
+                if (!newProfile.id) {
+                    const localDataStr = localStorage.getItem("admin_details")
+                    if (localDataStr) {
+                        try {
+                            const localData = JSON.parse(localDataStr)
+                            newProfile = {
+                                ...newProfile,
+                                id: localData._id || localData.id || "",
+                                name: localData.name || localData.fullName || "",
+                                email: localData.email || "",
+                                phone: localData.phone || localData.mobile || "",
+                                station: localData.stationName || localData.station || "",
+                            }
+                        } catch (e) { }
+                    }
+                }
+
+                setProfile(newProfile)
+
+                // Optional: Fire and forget stations for dropdown (if needed)
+                Promise.allSettled([adminApi.getStations()]).then(([allStationsRes]) => {
+                    if (allStationsRes.status === "fulfilled") {
+                        const res = allStationsRes.value as any
+                        const list = res.data || res
+                        if (Array.isArray(list)) setStationsList(list)
+                    }
                 })
+
             } catch {
                 showToast("Failed to load profile", "error")
             } finally {
@@ -110,11 +160,17 @@ export default function Settings() {
         e.preventDefault()
         setProfileSaving(true)
         try {
-            const res = await stationAdminApi.updateStationAdmin({
+            // Include _id if it was found
+            const payload: any = {
                 name: profile.name,
                 email: profile.email,
                 phone: profile.phone,
-            }) as any
+            }
+            if (profile.id) {
+                payload._id = profile.id
+            }
+
+            const res = await adminApi.updateUser(payload) as any
             if (res.code === 1 || res.success) {
                 showToast("Profile updated successfully!", "success")
                 // Refresh local storage if present
@@ -122,6 +178,7 @@ export default function Settings() {
                 if (stored) {
                     const parsed = JSON.parse(stored)
                     localStorage.setItem("admin_details", JSON.stringify({ ...parsed, name: profile.name, email: profile.email }))
+                    window.dispatchEvent(new Event("admin_details_updated"))
                 }
             } else {
                 showToast(res.message || "Failed to update profile", "error")
@@ -145,7 +202,7 @@ export default function Settings() {
 
         setPwSaving(true)
         try {
-            const res = await stationAdminApi.changePassword({
+            const res = await adminApi.changePassword({
                 currentPassword,
                 newPassword,
             }) as any
@@ -229,13 +286,27 @@ export default function Settings() {
 
                                 <div className="space-y-2">
                                     <label className="text-[13px] font-semibold text-slate-400 ml-1">Station</label>
-                                    <input
-                                        type="text"
-                                        value={profile.station}
-                                        readOnly
-                                        className={`${inputCls} bg-slate-50 cursor-not-allowed text-slate-400`}
-                                        placeholder="Station name"
-                                    />
+                                    <div className="relative">
+                                        <select
+                                            value={stationId}
+                                            onChange={(e) => {
+                                                const selected = stationsList.find(s => s._id === e.target.value)
+                                                setStationId(e.target.value)
+                                                setProfile({ ...profile, station: selected?.name || "" })
+                                            }}
+                                            className={`${inputCls} appearance-none pr-10 cursor-pointer`}
+                                        >
+                                            <option value="" disabled>Select a station</option>
+                                            {stationsList.map((s) => (
+                                                <option key={s._id} value={s._id}>{s.name}</option>
+                                            ))}
+                                        </select>
+                                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="6 9 12 15 18 9" />
+                                            </svg>
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div className="pt-2">

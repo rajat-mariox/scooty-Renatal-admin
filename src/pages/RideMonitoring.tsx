@@ -6,7 +6,7 @@ import {
 import { useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function RideMonitoring() {
     const navigate = useNavigate()
@@ -17,7 +17,7 @@ export default function RideMonitoring() {
     const fetchRides = async () => {
         setLoading(true)
         try {
-            const response = await stationAdminApi.getRides()
+            const response = await adminApi.getRides()
             const data = (response as any).data || response
             const fetchedRides = Array.isArray(data.rides) ? data.rides : (Array.isArray(data) ? data : [])
             

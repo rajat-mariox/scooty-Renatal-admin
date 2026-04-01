@@ -14,7 +14,7 @@ import {
 import MainLayout from "../layouts/MainLayout"
 import { ReactNode, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function Dashboard() {
     const navigate = useNavigate()
@@ -33,7 +33,7 @@ export default function Dashboard() {
         const fetchDashboardData = async () => {
             setLoading(true)
             try {
-                const response = await stationAdminApi.getDashboardStats()
+                const response = await adminApi.getDashboardStats()
                 const data = (response as any).data || response
 
                 // Map stats from API

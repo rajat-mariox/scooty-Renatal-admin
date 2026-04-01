@@ -18,6 +18,9 @@ const ComplaintDetail = lazy(() => import("./pages/ComplaintDetail"))
 const Reports = lazy(() => import("./pages/Reports"))
 const Settings = lazy(() => import("./pages/Settings"))
 const AddVehicle = lazy(() => import("./pages/AddVehicle"))
+const StationAdmins = lazy(() => import("./pages/admin/StationAdmins"))
+const UserManagement = lazy(() => import("./pages/admin/UserManagement"))
+const Finance = lazy(() => import("./pages/admin/Finance"))
 
 // Loading component
 const PageLoader = () => (
@@ -53,6 +56,11 @@ function App() {
           <Route path="/maintenance" element={<MaintenanceHistory />} />
           <Route path="/maintenance/new" element={<MaintenanceLog />} />
           <Route path="/maintenance/details" element={<MaintenanceDetail />} />
+
+          {/* Admin Specific Routes */}
+          <Route path="/admin/station-admins" element={<StationAdmins />} />
+          <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/finance" element={<Finance />} />
         </Routes>
       </Suspense>
     </Router>

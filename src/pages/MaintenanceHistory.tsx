@@ -2,7 +2,7 @@ import { Search, Plus, RefreshCw } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function MaintenanceHistory() {
     const navigate = useNavigate()
@@ -13,7 +13,7 @@ export default function MaintenanceHistory() {
     const fetchMaintenanceLogs = async () => {
         setLoading(true)
         try {
-            const response = await stationAdminApi.getMaintenanceLogs()
+            const response = await adminApi.getMaintenanceLogs()
             const data = (response as any).data || response
             const fetchedLogs = Array.isArray(data.logs) ? data.logs : (Array.isArray(data) ? data : [])
             

@@ -1,0 +1,3 @@
+/scooty/v1/api/admin/send-otp === {"code":3,"message":"invalid token","data":{}}
+/scooty/v1/api/admin/auth/forgot-password/send-otp === {"code":3,"message":"invalid token","data":{}}
+/scooty/v1/api/admin/auth/send-otp === {"code":3,"message":"invalid token","data":{}}

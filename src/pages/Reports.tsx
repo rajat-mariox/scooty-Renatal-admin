@@ -21,7 +21,7 @@ import {
 } from 'recharts'
 import MainLayout from "../layouts/MainLayout"
 import { useEffect, useState } from "react"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function Reports() {
     const [loading, setLoading] = useState(true)
@@ -41,7 +41,7 @@ export default function Reports() {
         const fetchReports = async () => {
             setLoading(true)
             try {
-                const response = await stationAdminApi.getReports()
+                const response = await adminApi.getReports()
                 const data = (response as any).data || response
                 
                 setRevenueData(data.revenueData || [])

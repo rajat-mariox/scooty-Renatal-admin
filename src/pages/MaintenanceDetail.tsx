@@ -7,7 +7,7 @@ import {
 import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function MaintenanceDetail() {
     const navigate = useNavigate()
@@ -31,7 +31,7 @@ export default function MaintenanceDetail() {
             setLoading(true)
             try {
                 // Since there is no single log detail endpoint, fetch all and filter
-                const response = await stationAdminApi.getMaintenanceLogs()
+                const response = await adminApi.getMaintenanceLogs()
                 const data = (response as any).data || response
                 const fetchedLogs = Array.isArray(data.logs) ? data.logs : (Array.isArray(data) ? data : [])
                 
@@ -68,7 +68,7 @@ export default function MaintenanceDetail() {
     const handleUpdateStatus = async (newStatus: string) => {
         setActionLoading(true)
         try {
-            await stationAdminApi.updateMaintenanceStatus({
+            await adminApi.updateMaintenanceStatus({
                 logId: id,
                 status: newStatus
             })

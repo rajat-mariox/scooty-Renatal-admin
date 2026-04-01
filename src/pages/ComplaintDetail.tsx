@@ -10,7 +10,7 @@ import {
 import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
-import { stationAdminApi } from "../services/stationAdminApi"
+import { adminApi } from "../services/adminApi"
 
 export default function ComplaintDetail() {
     const navigate = useNavigate()
@@ -35,9 +35,9 @@ export default function ComplaintDetail() {
 
             setLoading(true)
             try {
-                const response = await stationAdminApi.getTicketDetail(id)
+                const response = await adminApi.getTicketDetail(id)
                 const data = (response as any).data || response
-                
+
                 const formattedData = {
                     id: data.ticketId || data.id || id,
                     date: data.date || data.createdAt ? new Date(data.date || data.createdAt).toISOString().split('T')[0] : "N/A",
@@ -47,7 +47,7 @@ export default function ComplaintDetail() {
                     issueType: data.issue || data.subject || "General Support",
                     description: data.description || "No description provided."
                 }
-                
+
                 setComplaintData(formattedData)
                 setStatus(data.status || "Pending")
             } catch (err: any) {
@@ -64,9 +64,9 @@ export default function ComplaintDetail() {
     const handleResolve = async () => {
         setActionLoading(true)
         try {
-            // Check if updateTicketStatus exists in stationAdminApi, if not just update local state
-            if ((stationAdminApi as any).updateTicketStatus) {
-                await (stationAdminApi as any).updateTicketStatus(id as string, { status: 'Resolved' })
+            // Check if updateTicketStatus exists in adminApi, if not just update local state
+            if ((adminApi as any).updateTicketStatus) {
+                await (adminApi as any).updateTicketStatus(id as string, { status: 'Resolved' })
             }
             setStatus("Resolved")
         } catch (error) {
@@ -96,7 +96,7 @@ export default function ComplaintDetail() {
                         <AlertCircle className="text-rose-500" size={40} />
                     </div>
                     <span className="text-lg font-bold text-slate-700">{error || "Complaint not found"}</span>
-                    <button 
+                    <button
                         onClick={() => navigate("/support")}
                         className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all mt-4"
                     >
@@ -127,11 +127,10 @@ export default function ComplaintDetail() {
                         </div>
                     </div>
                     <div className="pt-10">
-                        <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${
-                            status === "Resolved" || status === "Closed" 
-                            ? "bg-green-100 text-green-600" 
-                            : "bg-yellow-100 text-yellow-600"
-                        }`}>
+                        <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${status === "Resolved" || status === "Closed"
+                                ? "bg-green-100 text-green-600"
+                                : "bg-yellow-100 text-yellow-600"
+                            }`}>
                             {status}
                         </span>
                     </div>
@@ -145,7 +144,7 @@ export default function ComplaintDetail() {
                         {/* Complaint Information Card */}
                         <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
                             <h3 className="text-[16px] font-bold text-slate-800 mb-8">Complaint Information</h3>
-                            
+
                             <div className="grid grid-cols-2 gap-y-10">
                                 <InfoItem label="Complaint ID" value={complaintData.id} />
                                 <InfoItem label="Date" value={complaintData.date} />
@@ -154,7 +153,7 @@ export default function ComplaintDetail() {
                                 <div>
                                     <span className="text-[12px] font-semibold text-slate-400 block mb-1">Related Ride</span>
                                     {complaintData.relatedRide !== "N/A" ? (
-                                        <button 
+                                        <button
                                             onClick={() => navigate(`/rides/details?id=${complaintData.relatedRide}`)}
                                             className="text-[14px] font-bold text-[#FF6A1F] hover:underline"
                                         >
@@ -185,7 +184,7 @@ export default function ComplaintDetail() {
                         {/* Contact User Card */}
                         <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
                             <h3 className="text-[16px] font-bold text-slate-800 mb-6">Contact User</h3>
-                            <button 
+                            <button
                                 onClick={() => window.location.href = `tel:${complaintData.phone}`}
                                 className="w-full h-14 flex items-center justify-center gap-3 border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold hover:bg-orange-50 transition-all text-[14px]"
                             >
@@ -212,13 +211,13 @@ export default function ComplaintDetail() {
                             <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
                                 <h3 className="text-[16px] font-bold text-slate-800 mb-6">Actions</h3>
                                 <div className="space-y-4">
-                                    <button 
+                                    <button
                                         onClick={() => setIsResolveModalOpen(true)}
                                         className="w-full h-14 bg-gradient-to-r from-[#FF6A1F] to-[#FF8C4B] text-white font-bold rounded-xl hover:opacity-95 transition-all shadow-sm text-[14px]"
                                     >
                                         Mark as Resolved
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => setIsEscalateModalOpen(true)}
                                         className="w-full h-14 bg-[#FF4B4B] text-white font-bold rounded-xl hover:bg-red-600 transition-all shadow-sm text-[14px]"
                                     >
@@ -240,13 +239,13 @@ export default function ComplaintDetail() {
                             Are you sure you want to escalate this complaint to Super Admin?
                         </p>
                         <div className="flex items-center justify-end gap-6">
-                            <button 
+                            <button
                                 onClick={() => setIsEscalateModalOpen(false)}
                                 className="text-slate-500 font-bold hover:text-slate-800 transition-colors text-[14px]"
                             >
                                 Cancel
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setIsEscalateModalOpen(false)}
                                 className="bg-[#FF4B4B] hover:bg-red-600 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-sm text-[14px]"
                             >
@@ -266,14 +265,14 @@ export default function ComplaintDetail() {
                             Are you sure you want to mark this complaint as resolved?
                         </p>
                         <div className="flex items-center justify-end gap-6">
-                            <button 
+                            <button
                                 onClick={() => setIsResolveModalOpen(false)}
                                 disabled={actionLoading}
                                 className="text-slate-500 font-bold hover:text-slate-800 transition-colors text-[14px] disabled:opacity-50"
                             >
                                 Cancel
                             </button>
-                            <button 
+                            <button
                                 onClick={handleResolve}
                                 disabled={actionLoading}
                                 className="flex items-center gap-2 bg-[#FF6A1F] hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-sm text-[14px] disabled:opacity-70"
