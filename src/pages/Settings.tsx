@@ -61,10 +61,7 @@ export default function Settings() {
         name: "",
         email: "",
         phone: "",
-        station: "",
     })
-    const [stationId, setStationId] = useState("")
-    const [stationsList, setStationsList] = useState<{ _id: string; name: string }[]>([])
     const [profileLoading, setProfileLoading] = useState(true)
     const [profileSaving, setProfileSaving] = useState(false)
 
@@ -137,14 +134,7 @@ export default function Settings() {
 
                 setProfile(newProfile)
 
-                // Optional: Fire and forget stations for dropdown (if needed)
-                Promise.allSettled([adminApi.getStations()]).then(([allStationsRes]) => {
-                    if (allStationsRes.status === "fulfilled") {
-                        const res = allStationsRes.value as any
-                        const list = res.data || res
-                        if (Array.isArray(list)) setStationsList(list)
-                    }
-                })
+
 
             } catch {
                 showToast("Failed to load profile", "error")
@@ -284,30 +274,7 @@ export default function Settings() {
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-[13px] font-semibold text-slate-400 ml-1">Station</label>
-                                    <div className="relative">
-                                        <select
-                                            value={stationId}
-                                            onChange={(e) => {
-                                                const selected = stationsList.find(s => s._id === e.target.value)
-                                                setStationId(e.target.value)
-                                                setProfile({ ...profile, station: selected?.name || "" })
-                                            }}
-                                            className={`${inputCls} appearance-none pr-10 cursor-pointer`}
-                                        >
-                                            <option value="" disabled>Select a station</option>
-                                            {stationsList.map((s) => (
-                                                <option key={s._id} value={s._id}>{s.name}</option>
-                                            ))}
-                                        </select>
-                                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="6 9 12 15 18 9" />
-                                            </svg>
-                                        </span>
-                                    </div>
-                                </div>
+
 
                                 <div className="pt-2">
                                     <button

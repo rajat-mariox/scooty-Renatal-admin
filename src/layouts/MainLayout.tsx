@@ -53,37 +53,55 @@ export default function MainLayout({ children }: MainLayoutProps) {
     })
 
     useEffect(() => {
-        const fetchHeaderData = async () => {
+        // Fetch stations independently so other failures don't block it
+        const fetchStations = async () => {
             try {
-                const [stationRes, notifyRes, meRes] = await Promise.all([
-                    adminApi.getStations(),
-                    adminApi.getNotifications(),
-                    adminApi.getAdminDetails()
-                ])
+                const stationRes = await adminApi.getStations()
+                console.log("[MainLayout] raw stationRes:", stationRes)
+                const sData = (stationRes as any).data ?? stationRes
+                const list = Array.isArray(sData)
+                    ? sData
+                    : Array.isArray(sData?.stations)
+                    ? sData.stations
+                    : Array.isArray(sData?.data)
+                    ? sData.data
+                    : []
+                console.log("[MainLayout] parsed stations:", list)
+                setStations(list)
+            } catch (err) {
+                console.error("[MainLayout] stations fetch failed:", err)
+            }
+        }
 
-                // Handle stations
-                const sData = (stationRes as any).data || stationRes
-                setStations(Array.isArray(sData) ? sData : (sData.stations || []))
+        // Fetch notifications independently
+        const fetchNotifications = async () => {
+            try {
+                const notifyRes = await adminApi.getNotifications()
+                const nData = (notifyRes as any).data ?? notifyRes
+                const nList = Array.isArray(nData) ? nData : (nData?.notifications || [])
+                setUnreadCount(nList.filter((n: any) => !n.isRead).length)
+            } catch (err) {
+                console.error("[MainLayout] notifications fetch failed:", err)
+            }
+        }
 
-                // Handle notifications
-                const nData = (notifyRes as any).data || notifyRes
-                const nList = Array.isArray(nData) ? nData : (nData.notifications || [])
-                const unread = nList.filter((n: any) => !n.isRead).length
-                setUnreadCount(unread)
-
-                // Refresh admin profile from live API
-                const meBody = (meRes as any)
-                const me = meBody?.data ?? meBody
+        // Fetch admin profile independently
+        const fetchAdminProfile = async () => {
+            try {
+                const meRes = await adminApi.getAdminDetails()
+                const me = (meRes as any)?.data ?? meRes
                 const name = me?.name || me?.fullName || "Admin"
                 const role = parseRoleLabel(me?.role || me?.adminType || "")
                 setAdminProfile({ name, role })
-                // Keep localStorage in sync
                 localStorage.setItem("admin_details", JSON.stringify(me))
-            } catch (error) {
-                console.error("Failed to fetch header data:", error)
+            } catch (err) {
+                console.error("[MainLayout] admin profile fetch failed:", err)
             }
         }
-        fetchHeaderData()
+
+        fetchStations()
+        fetchNotifications()
+        fetchAdminProfile()
     }, [])
 
     const sidebarItems = [
