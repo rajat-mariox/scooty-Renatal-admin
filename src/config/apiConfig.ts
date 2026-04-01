@@ -170,7 +170,9 @@ export const API_ENDPOINTS = {
 
     TRANSACTIONS: '/admin/transactions',
     BOOKINGS: {
+       GET: '/admin/bookings',
       DETAILS: (id: string) => `/admin/bookings/${id}`,
+       APPROVE: '/admin/bookings/approve',
     },
     REFUND: '/admin/refund',
     LEDGER: '/admin/ledger',
