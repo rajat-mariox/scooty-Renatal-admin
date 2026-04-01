@@ -178,6 +178,14 @@ export const adminApi = {
     const response = await axiosInstance.get(ENDPOINTS.BOOKINGS.DETAILS(id));
     return response.data;
   },
+    getBookings: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.BOOKINGS.GET, { params });
+    return response.data;
+  },
+  approveBooking: async (data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.APPROVE, data);
+    return response.data;
+  },
   refund: async (data: any) => {
     const response = await axiosInstance.patch(ENDPOINTS.REFUND, data);
     return response.data;
