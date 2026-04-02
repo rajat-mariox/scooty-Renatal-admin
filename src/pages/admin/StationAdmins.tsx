@@ -10,6 +10,7 @@ export default function StationAdmins() {
     const [searchQuery, setSearchQuery] = useState("")
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', phone: '', stationId: '' })
+    const [addAdminError, setAddAdminError] = useState("")
 
     const fetchData = async () => {
         setLoading(true)
@@ -37,8 +38,9 @@ export default function StationAdmins() {
 
     const handleAddAdmin = async (e: React.FormEvent) => {
         e.preventDefault()
+        setAddAdminError("")
         if (!newAdmin.stationId) {
-            alert("Please select a station")
+            setAddAdminError("Please select a station")
             return
         }
         try {
@@ -55,13 +57,14 @@ export default function StationAdmins() {
             if (res.code === 1 || res.success) {
                 setIsAddModalOpen(false)
                 setNewAdmin({ name: '', email: '', password: '', phone: '', stationId: '' })
+                setAddAdminError("")
                 fetchData()
             } else {
-                alert(res.message || "Failed to create admin")
+                setAddAdminError(res.message || "Failed to create admin")
             }
         } catch (err: any) {
             console.error("Failed to create admin:", err)
-            alert(err.response?.data?.message || "An unexpected error occurred")
+            setAddAdminError(err.response?.data?.message || err.message || "An unexpected error occurred")
         }
     }
 
@@ -79,7 +82,7 @@ export default function StationAdmins() {
                         <p className="text-slate-500 text-sm">Manage users with station-level access</p>
                     </div>
                     <button
-                        onClick={() => setIsAddModalOpen(true)}
+                        onClick={() => { setIsAddModalOpen(true); setAddAdminError("") }}
                         className="bg-orange-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-orange-100 transition-all hover:bg-orange-700 active:scale-95"
                     >
                         <UserPlus size={18} />
@@ -158,7 +161,12 @@ export default function StationAdmins() {
                 {isAddModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                         <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-                            <h3 className="text-xl font-black text-slate-800 mb-6">Create New Admin</h3>
+                            <h3 className="text-xl font-black text-slate-800 mb-4">Create New Station Admin</h3>
+                            {addAdminError && (
+                                <div className="mb-4 bg-rose-50 border border-rose-100 text-rose-700 px-4 py-3 rounded-lg">
+                                    {addAdminError}
+                                </div>
+                            )}
                             <form onSubmit={handleAddAdmin} className="space-y-4">
                                 <div>
                                     <label className="text-[11px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Full Name</label>
