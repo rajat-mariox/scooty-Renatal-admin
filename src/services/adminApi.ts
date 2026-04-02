@@ -78,6 +78,10 @@ export const adminApi = {
     const response = await axiosInstance.post(ENDPOINTS.STATIONS.ADD, data);
     return response.data;
   },
+  updateStation: async (data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.STATIONS.UPDATE, data);
+    return response.data;
+  },
   getStationDetails: async (id: string) => {
     const response = await axiosInstance.get(ENDPOINTS.STATIONS.DETAILS(id));
     return response.data;
@@ -175,20 +179,16 @@ export const adminApi = {
     return response.data;
   },
   getBookingDetails: async (id: string) => {
-    const response = await axiosInstance.get(ENDPOINTS.BOOKINGS.DETAILS(id));
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
-    getBookings: async (params?: any) => {
-    const response = await axiosInstance.get(ENDPOINTS.BOOKINGS.GET, { params });
-    return response.data;
+  getBookings: async (params?: any) => {
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   approveBooking: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.APPROVE, data);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   refund: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.REFUND, data);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   getLedger: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.LEDGER, { params });
@@ -197,52 +197,41 @@ export const adminApi = {
 
   // Vehicles
   getVehicles: async (params?: any) => {
-    const response = await axiosInstance.get(ENDPOINTS.VEHICLES.GET, { params });
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   addVehicle: async (data: any) => {
-    const response = await axiosInstance.post(ENDPOINTS.VEHICLES.ADD, data);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   updateVehicleStatus: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.VEHICLES.UPDATE_STATUS, data);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   getVehicleDetails: async (id: string) => {
-    const response = await axiosInstance.get(ENDPOINTS.VEHICLES.DETAILS(id));
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
 
   // Rides
   getRides: async (params?: any) => {
-    const response = await axiosInstance.get(ENDPOINTS.RIDES.GET, { params });
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   getRideDetails: async (id: string) => {
-    const response = await axiosInstance.get(ENDPOINTS.RIDES.DETAILS(id));
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   forceEndRide: async (data: any) => {
-    const response = await axiosInstance.post(ENDPOINTS.RIDES.FORCE_END, data);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   lockVehicle: async (data: any) => {
-    const response = await axiosInstance.get(ENDPOINTS.RIDES.LOCK_VEHICLE, { params: data });
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
 
   // Notifications
   getNotifications: async () => {
-    const response = await axiosInstance.get(ENDPOINTS.NOTIFICATIONS.GET);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   readNotification: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.NOTIFICATIONS.READ, data);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   readAllNotifications: async () => {
-    const response = await axiosInstance.patch(ENDPOINTS.NOTIFICATIONS.READ_ALL);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
 
   // Tickets / User Support
@@ -265,15 +254,25 @@ export const adminApi = {
 
   // Maintenance
   getMaintenanceLogs: async (params?: any) => {
-    const response = await axiosInstance.get(ENDPOINTS.MAINTENANCE.GET_LOGS, { params });
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   createMaintenanceLog: async (data: any) => {
-    const response = await axiosInstance.post(ENDPOINTS.MAINTENANCE.CREATE_LOG, data);
-    return response.data;
+    throw new Error('Endpoint not available in admin/super-admin panel');
   },
   updateMaintenanceStatus: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.MAINTENANCE.UPDATE_STATUS, data);
+    throw new Error('Endpoint not available in admin/super-admin panel');
+  },
+  // Admin Management (sub-admins)
+  createSubAdmin: async (data: any) => {
+    const response = await axiosInstance.post(ENDPOINTS.ADMIN_MANAGEMENT.CREATE, data);
+    return response.data;
+  },
+  getSubAdmins: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.ADMIN_MANAGEMENT.GET_ALL, { params });
+    return response.data;
+  },
+  updateSubAdmin: async (data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.ADMIN_MANAGEMENT.UPDATE, data);
     return response.data;
   },
 };
