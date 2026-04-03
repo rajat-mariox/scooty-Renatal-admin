@@ -41,11 +41,21 @@ export default function BookingControl() {
     }, [])
 
     const filteredBookings = bookingList.filter((booking) => {
-        const query = searchQuery.toLowerCase()
+        const query = (searchQuery || '').trim().toLowerCase()
+        if (!query) return true
+
+        const id = String(booking.id || '').toLowerCase()
+        const user = String(booking.user || '').toLowerCase()
+        const status = String(booking.status || '').toLowerCase()
+        const phone = String(booking.phone || '').toLowerCase()
+        const vehicle = String(booking.vehicle || '').toLowerCase()
+
         return (
-            booking.id.toLowerCase().includes(query) ||
-            booking.user.toLowerCase().includes(query) ||
-            booking.status.toLowerCase().includes(query)
+            id.includes(query) ||
+            user.includes(query) ||
+            status.includes(query) ||
+            phone.includes(query) ||
+            vehicle.includes(query)
         )
     })
 

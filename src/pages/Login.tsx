@@ -1,5 +1,5 @@
 import { Eye, EyeOff, Bike, ArrowLeft, KeyRound, CheckCircle } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { adminApi } from "../services/adminApi"
 
@@ -29,6 +29,13 @@ export default function Login() {
         setError("")
         setSuccessMessage("")
     }
+
+    // Auto-dismiss success messages after 2 seconds
+    useEffect(() => {
+        if (!successMessage) return
+        const t = setTimeout(() => setSuccessMessage(""), 2000)
+        return () => clearTimeout(t)
+    }, [successMessage])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -299,7 +306,7 @@ export default function Login() {
                                     maxLength={6}
                                     value={otp}
                                     onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '')); resetMessages(); }}
-                                    placeholder="Enter 4-digit OTP"
+                                    placeholder="Enter 6-digit OTP"
                                     className={`${inputCls} tracking-widest font-mono`}
                                 />
                             </div>

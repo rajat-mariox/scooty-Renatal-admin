@@ -10,9 +10,8 @@ import {
     Settings,
     LogOut,
     Zap,
-    X,
-    ChevronDown,
-    MapPin
+    MapPin,
+    ChevronDown
 } from "lucide-react"
 import { useState, ReactNode, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
@@ -107,6 +106,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const sidebarItems = [
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} strokeWidth={2.5} /> },
         { name: "Station Admins", path: "/admin/station-admins", icon: <Settings size={20} strokeWidth={2.5} /> },
+        { name: "Add Station", path: "/admin/stations/add", icon: <MapPin size={20} strokeWidth={2.5} /> },
         { name: "User Management", path: "/admin/users", icon: <Headset size={20} strokeWidth={2.5} /> },
         { name: "Fleet Management", path: "/fleet", icon: <Bike size={20} strokeWidth={2.5} /> },
         { name: "Ride Monitoring", path: "/ride-monitoring", icon: <Navigation size={20} strokeWidth={2.5} /> },
@@ -122,14 +122,18 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className="flex h-screen bg-white text-slate-900 selection:bg-orange-100">
             {/* Sidebar */}
             <aside className="w-60 border-r border-slate-100 flex flex-col h-full bg-white z-20 shrink-0">
-                <div className="p-6 flex items-center gap-3">
+                <button
+                    type="button"
+                    onClick={() => navigate("/dashboard")}
+                    className="h-16 w-full px-6 border-b border-slate-100 flex items-center gap-3 shrink-0 text-left hover:bg-slate-50/80 transition-colors"
+                >
                     <div className="bg-[#FF6A1F] p-2 rounded-2xl shadow-sm shadow-orange-100">
                         <Bike className="text-white" size={24} strokeWidth={2.5} />
                     </div>
                     <span className="text-lg font-bold text-gray-800">
                         Admin Portal
                     </span>
-                </div>
+                </button>
 
                 <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
                     {sidebarItems.map((item) => {
@@ -174,11 +178,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             {/* Main Content */}
             <main className="flex-1 flex flex-col bg-slate-50 overflow-hidden relative">
                 {/* Header */}
-                <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
-                    <div className="flex items-center gap-4 text-slate-400 cursor-pointer hover:text-slate-600">
-                        <X size={24} />
-                    </div>
-
+                <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-end px-6 shrink-0">
                     <div className="flex items-center gap-6">
                         <div className="relative">
                             <div
@@ -235,7 +235,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             )}
                         </button>
 
-                        <div className="flex items-center gap-3 pl-2 border-l border-slate-100 cursor-pointer group">
+                        <div className="flex items-center gap-3 pl-2 border-l border-slate-100 cursor-pointer">
                             <div className="text-right">
                                 <p className="text-sm font-bold leading-none text-slate-900">{adminProfile?.name ?? "Admin"}</p>
                                 <p className="text-[10px] text-slate-400 mt-1 font-medium">{adminProfile?.role ?? "—"}</p>
@@ -243,7 +243,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                             <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center text-white font-bold text-sm">
                                 {(adminProfile?.name?.[0] ?? "A").toUpperCase()}
                             </div>
-                            <ChevronDown size={16} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
                         </div>
                     </div>
                 </header>

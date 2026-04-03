@@ -19,6 +19,7 @@ const Reports = lazy(() => import("./pages/Reports"))
 const Settings = lazy(() => import("./pages/Settings"))
 const AddVehicle = lazy(() => import("./pages/AddVehicle"))
 const StationAdmins = lazy(() => import("./pages/admin/StationAdmins"))
+const AddStation = lazy(() => import("./pages/admin/AddStation"))
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"))
 const Finance = lazy(() => import("./pages/admin/Finance"))
 
@@ -59,6 +60,7 @@ function App() {
 
           {/* Admin Specific Routes */}
           <Route path="/admin/station-admins" element={<StationAdmins />} />
+          <Route path="/admin/stations/add" element={<AddStation />} />
           <Route path="/admin/users" element={<UserManagement />} />
           <Route path="/admin/finance" element={<Finance />} />
         </Routes>
