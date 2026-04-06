@@ -187,8 +187,10 @@ export default function AddStation() {
         parkingType: "OPEN",
         lat: "",
         lng: "",
+        stationAdminId: "",
         isActive: true
     })
+    const [stationAdmins, setStationAdmins] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
     const [success, setSuccess] = useState("")
@@ -199,6 +201,28 @@ export default function AddStation() {
 
     const markerLat = hasCoordinates ? Number(form.lat) : 22.9734
     const markerLng = hasCoordinates ? Number(form.lng) : 78.6569
+    const normalizeId = (value: any) => (value === undefined || value === null ? "" : String(value).trim())
+    const getAdminId = (admin: any) => normalizeId(admin?._id || admin?.id || admin?.adminId || admin?.userId)
+    const getAdminLabel = (admin: any) => admin?.name || admin?.fullName || admin?.email || "Unnamed Admin"
+
+    useEffect(() => {
+        const fetchStationAdmins = async () => {
+            try {
+                const adminRes = await adminApi.getStationAdmins()
+                const raw = (adminRes as any)?.data ?? adminRes
+                const list = Array.isArray(raw) ? raw : (raw?.admins || raw?.stationAdmins || [])
+                const activeStationAdmins = list.filter((a: any) => {
+                    const role = String(a?.role || a?.adminType || "").toUpperCase()
+                    return a?.isActive !== false && role === "STATION_ADMIN"
+                })
+                setStationAdmins(activeStationAdmins)
+            } catch (err) {
+                console.error("Failed to fetch station admins:", err)
+            }
+        }
+
+        void fetchStationAdmins()
+    }, [])
 
     const reverseGeocodeIndia = async (lat: number, lng: number) => {
         try {
@@ -260,19 +284,28 @@ export default function AddStation() {
 
         setLoading(true)
         try {
+            const stationAdminIdRaw = normalizeId(form.stationAdminId)
+            const isNumericAdminId = /^\d+$/.test(stationAdminIdRaw)
             const payload = {
                 name: form.name.trim(),
                 address: form.address.trim(),
                 parkingType: form.parkingType,
                 lat: Number(form.lat),
                 lng: Number(form.lng),
+                ...(stationAdminIdRaw ? {
+                    stationAdminId: stationAdminIdRaw,
+                    assignedAdminId: stationAdminIdRaw,
+                    adminId: stationAdminIdRaw,
+                    stationAdmin: stationAdminIdRaw,
+                    ...(isNumericAdminId ? { stationAdminIdNumeric: Number(stationAdminIdRaw) } : {})
+                } : {}),
                 isActive: form.isActive
             }
 
             const res = await adminApi.addStation(payload) as any
             if (res?.code === 1 || res?.success) {
                 setSuccess(res?.message || "Station added successfully")
-                setForm({ name: "", address: "", parkingType: "OPEN", lat: "", lng: "", isActive: true })
+                setForm({ name: "", address: "", parkingType: "OPEN", lat: "", lng: "", stationAdminId: "", isActive: true })
             } else {
                 setError(res?.message || "Failed to add station")
             }
@@ -352,7 +385,7 @@ export default function AddStation() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                             <div>
                                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">Parking Type</label>
                                 <select
@@ -362,6 +395,25 @@ export default function AddStation() {
                                 >
                                     <option value="OPEN">OPEN</option>
                                     <option value="COVERED">COVERED</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">Assign Station Admin</label>
+                                <select
+                                    value={form.stationAdminId}
+                                    onChange={(e) => setForm({ ...form, stationAdminId: e.target.value })}
+                                    className="w-full rounded-xl border border-slate-200 py-3 px-4 text-sm font-medium outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+                                >
+                                    <option value="">Select Station Admin</option>
+                                    {stationAdmins.map((admin, index) => {
+                                        const id = getAdminId(admin)
+                                        if (!id) return null
+                                        return (
+                                            <option key={`${id}-${index}`} value={id}>
+                                                {getAdminLabel(admin)}
+                                            </option>
+                                        )
+                                    })}
                                 </select>
                             </div>
                             <div>

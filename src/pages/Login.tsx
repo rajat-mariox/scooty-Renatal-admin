@@ -183,7 +183,7 @@ export default function Login() {
                     <form onSubmit={handleLogin} className="animate-in fade-in slide-in-from-right-4 duration-300">
                         <div className="space-y-4 mb-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-600 block text-left">Email</label>
+                                <label className="text-sm font-medium text-slate-600 block text-left">Email Address</label>
                                 <input
                                     type="email"
                                     value={email}
