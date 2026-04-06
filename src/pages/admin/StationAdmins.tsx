@@ -232,7 +232,7 @@ export default function StationAdmins() {
                                         <div className="text-xs font-medium text-slate-400 mt-0.5">{admin.phone || "-"}</div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="inline-flex items-center rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">
+                                        <span className="inline-flex items-center rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-sm font-medium text-orange-700">
                                             {resolveAdminStationName(admin)}
                                         </span>
                                     </td>
