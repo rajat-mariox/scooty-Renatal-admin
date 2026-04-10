@@ -88,51 +88,14 @@ export default function Settings() {
         const load = async () => {
             setProfileLoading(true)
             try {
-                // Fetch the list of users to find the Super Admin details
-                const usersRes = await adminApi.getUsers().catch(() => null) as any
-
-                let newProfile = { id: "", name: "", email: "", phone: "", station: "" }
-
-                if (usersRes && (usersRes.code === 1 || usersRes.success || Array.isArray(usersRes.data))) {
-                    let usersList = []
-                    if (Array.isArray(usersRes.data)) {
-                        usersList = usersRes.data
-                    } else if (usersRes.data && Array.isArray(usersRes.data.users)) {
-                        usersList = usersRes.data.users
-                    }
-
-                    const adminUser = usersList.find((u: any) => u.role === "ADMIN")
-                    if (adminUser) {
-                        newProfile = {
-                            ...newProfile,
-                            id: adminUser._id || adminUser.id || "",
-                            name: adminUser.name || adminUser.fullName || "",
-                            email: adminUser.email || "",
-                            phone: adminUser.phone || adminUser.mobile || adminUser.phoneNumber || "",
-                            station: adminUser.stationName || adminUser.station || "",
-                        }
-                    }
-                }
-
-                // If no admin user found via users list, try local storage fallback
-                if (!newProfile.id) {
-                    const localDataStr = localStorage.getItem("admin_details")
-                    if (localDataStr) {
-                        try {
-                            const localData = JSON.parse(localDataStr)
-                            newProfile = {
-                                ...newProfile,
-                                id: localData._id || localData.id || "",
-                                name: localData.name || localData.fullName || "",
-                                email: localData.email || "",
-                                phone: localData.phone || localData.mobile || "",
-                                station: localData.stationName || localData.station || "",
-                            }
-                        } catch (e) { }
-                    }
-                }
-
-                setProfile(newProfile)
+                const meRes = await adminApi.getAdminDetails() as any
+                const me = meRes?.data ?? meRes
+                setProfile({
+                    id: me?._id || me?.id || "",
+                    name: me?.name || me?.fullName || "",
+                    email: me?.email || "",
+                    phone: me?.phone || me?.mobile || me?.phoneNumber || "",
+                })
 
 
 
@@ -150,17 +113,13 @@ export default function Settings() {
         e.preventDefault()
         setProfileSaving(true)
         try {
-            // Include _id if it was found
-            const payload: any = {
+            const payload = {
                 name: profile.name,
                 email: profile.email,
-                phone: profile.phone,
-            }
-            if (profile.id) {
-                payload._id = profile.id
+                mobile: profile.phone,
             }
 
-            const res = await adminApi.updateUser(payload) as any
+            const res = await adminApi.updateAdminDetails(payload) as any
             if (res.code === 1 || res.success) {
                 showToast("Profile updated successfully!", "success")
                 // Refresh local storage if present
