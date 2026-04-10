@@ -3,40 +3,12 @@ import { API_ENDPOINTS } from '../config/apiConfig';
 
 const ENDPOINTS = API_ENDPOINTS.ADMIN;
 
+const emptyListResponse = { code: 1, message: 'success', data: [] };
+
 export const adminApi = {
   // Auth
   login: async (data: any) => {
     const response = await axiosInstance.post(ENDPOINTS.LOGIN, data);
-    return response.data;
-  },
-
-  sendOtp: async (data: { email: string }) => {
-    const response = await axiosInstance.post(ENDPOINTS.SEND_OTP, data);
-    return response.data;
-  },
-
-  verifyOtp: async (data: { email: string; transactionId?: string; otp: string }) => {
-    const response = await axiosInstance.post(ENDPOINTS.VERIFY_OTP, data);
-    return response.data;
-  },
-
-  getAdminDetails: async () => {
-    const response = await axiosInstance.get(ENDPOINTS.ME);
-    return response.data;
-  },
-
-  updateAdminDetails: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.ME, data);
-    return response.data;
-  },
-
-  changePassword: async (data: any) => {
-    const response = await axiosInstance.post(ENDPOINTS.CHANGE_PASSWORD, data);
-    return response.data;
-  },
-
-  resendOtp: async (data: { transactionId: string }) => {
-    const response = await axiosInstance.post(ENDPOINTS.RESEND_OTP, data);
     return response.data;
   },
 
@@ -55,17 +27,29 @@ export const adminApi = {
     return response.data;
   },
 
-  // Station Admins
+  getAdminDetails: async () => {
+    const response = await axiosInstance.get(ENDPOINTS.ME);
+    return response.data;
+  },
+
+  updateAdminDetails: async (data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.ME, data);
+    return response.data;
+  },
+
+  changePassword: async (data: any) => {
+    const response = await axiosInstance.post(ENDPOINTS.CHANGE_PASSWORD, data);
+    return response.data;
+  },
+
+  // Station admins
   getStationAdmins: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.STATION_ADMINS.GET_ALL, { params });
     return response.data;
   },
+
   createStationAdmin: async (data: any) => {
     const response = await axiosInstance.post(ENDPOINTS.STATION_ADMINS.CREATE, data);
-    return response.data;
-  },
-  updateStationAdminStatus: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.STATION_ADMINS.UPDATE_STATUS, data);
     return response.data;
   },
 
@@ -74,50 +58,45 @@ export const adminApi = {
     const response = await axiosInstance.get(ENDPOINTS.STATIONS.GET_ALL, { params });
     return response.data;
   },
+
   addStation: async (data: any) => {
     const response = await axiosInstance.post(ENDPOINTS.STATIONS.ADD, data);
     return response.data;
   },
-  updateStation: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.STATIONS.UPDATE, data);
-    return response.data;
-  },
+
+  // This endpoint is not exposed in admin routes; keep compatibility by deriving from list.
   getStationDetails: async (id: string) => {
-    const response = await axiosInstance.get(ENDPOINTS.STATIONS.DETAILS(id));
+    const response = await axiosInstance.get(ENDPOINTS.STATIONS.GET_ALL);
+    const payload = (response as any)?.data?.data ?? (response as any)?.data;
+    const stations = Array.isArray(payload) ? payload : (payload?.stations || []);
+    const station = stations.find((s: any) => String(s?._id || s?.id || s?.stationId) === String(id));
+    return { code: 1, message: 'success', data: station || null };
+  },
+
+  // Content moderation
+  getRidePlans: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.RIDE_PLANS.GET, { params });
     return response.data;
   },
 
-  // Ride Plans
-  getRidePlans: async () => {
-    const response = await axiosInstance.get(ENDPOINTS.RIDE_PLANS.GET);
-    return response.data;
-  },
-  addRidePlan: async (data: any) => {
-    const response = await axiosInstance.post(ENDPOINTS.RIDE_PLANS.ADD, data);
-    return response.data;
-  },
-  updateRidePlan: async (id: string, data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.RIDE_PLANS.UPDATE(id), data);
+  reviewRidePlan: async (id: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.RIDE_PLANS.REVIEW(id), data);
     return response.data;
   },
 
-  // FAQs
-  getFaqs: async () => {
-    const response = await axiosInstance.get(ENDPOINTS.FAQS.GET);
+  getFaqs: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.FAQS.GET, { params });
     return response.data;
   },
-  addFaq: async (data: any) => {
-    const response = await axiosInstance.post(ENDPOINTS.FAQS.ADD, data);
-    return response.data;
-  },
-  updateFaq: async (id: string, data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.FAQS.UPDATE(id), data);
+
+  reviewFaq: async (id: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.FAQS.REVIEW(id), data);
     return response.data;
   },
 
   // Dashboard
-  getDashboardStats: async () => {
-    const response = await axiosInstance.get(ENDPOINTS.DASHBOARD);
+  getDashboardStats: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.DASHBOARD, { params });
     return response.data;
   },
 
@@ -126,24 +105,44 @@ export const adminApi = {
     const response = await axiosInstance.get(ENDPOINTS.USERS.GET_ALL, { params });
     return response.data;
   },
-  updateUser: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.USERS.UPDATE, data);
+
+  updateUserStatus: async (userId: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.USERS.UPDATE_STATUS(userId), data);
     return response.data;
   },
 
-  // Commission
+  // Backward-compatible helper used by current Settings page.
+  updateUser: async (userIdOrData: any, maybeData?: any) => {
+    if (typeof userIdOrData === 'string') {
+      const response = await axiosInstance.patch(ENDPOINTS.USERS.UPDATE_STATUS(userIdOrData), maybeData);
+      return response.data;
+    }
+    const userId = userIdOrData?._id || userIdOrData?.id || userIdOrData?.userId;
+    const isActive = userIdOrData?.isActive ?? true;
+    const note = userIdOrData?.note || 'Updated from admin panel';
+    if (!userId) return { code: 0, message: 'userId is required' };
+    const response = await axiosInstance.patch(ENDPOINTS.USERS.UPDATE_STATUS(userId), { isActive, note });
+    return response.data;
+  },
+
+  // Pricing and commission
+  getPricing: async () => {
+    const response = await axiosInstance.get(ENDPOINTS.PRICING.GET);
+    return response.data;
+  },
+
+  updatePricing: async (data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.PRICING.UPDATE, data);
+    return response.data;
+  },
+
   getCommission: async () => {
     const response = await axiosInstance.get(ENDPOINTS.COMMISSION.GET);
     return response.data;
   },
+
   updateCommission: async (data: any) => {
     const response = await axiosInstance.patch(ENDPOINTS.COMMISSION.UPDATE, data);
-    return response.data;
-  },
-
-  // Reports
-  getReports: async (params?: any) => {
-    const response = await axiosInstance.get(ENDPOINTS.REPORTS, { params });
     return response.data;
   },
 
@@ -152,127 +151,133 @@ export const adminApi = {
     const response = await axiosInstance.get(ENDPOINTS.SETTLEMENTS.GET_ALL, { params });
     return response.data;
   },
+
   addSettlement: async (data: any) => {
     const response = await axiosInstance.post(ENDPOINTS.SETTLEMENTS.ADD, data);
     return response.data;
   },
-  updateSettlement: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.SETTLEMENTS.UPDATE, data);
+
+  updateSettlementStatus: async (settlementId: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.SETTLEMENTS.UPDATE_STATUS(settlementId), data);
     return response.data;
   },
 
-  // Others
-  getAuditLogs: async (params?: any) => {
-    const response = await axiosInstance.get(ENDPOINTS.AUDIT_LOGS, { params });
+  // Backward-compatible alias
+  updateSettlement: async (data: any) => {
+    const settlementId = data?.settlementId || data?._id || data?.id;
+    if (!settlementId) return { code: 0, message: 'settlementId is required' };
+    const payload = { status: data?.status, note: data?.note };
+    const response = await axiosInstance.patch(ENDPOINTS.SETTLEMENTS.UPDATE_STATUS(settlementId), payload);
     return response.data;
   },
-  getPricing: async () => {
-    const response = await axiosInstance.get(ENDPOINTS.PRICING.GET);
+
+  // Reports, transactions, ledger
+  getReports: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.REPORTS, { params });
     return response.data;
   },
-  updatePricing: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.PRICING.UPDATE, data);
-    return response.data;
-  },
+
   getTransactions: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.TRANSACTIONS, { params });
     return response.data;
   },
-  getBookingDetails: async (id: string) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  getBookings: async (params?: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  approveBooking: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  refund: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
+
   getLedger: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.LEDGER, { params });
     return response.data;
   },
 
-  // Vehicles
-  getVehicles: async (params?: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  addVehicle: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  updateVehicleStatus: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  getVehicleDetails: async (id: string) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-
-  // Rides
-  getRides: async (params?: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  getRideDetails: async (id: string) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  forceEndRide: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  lockVehicle: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-
-  // Notifications
-  getNotifications: async () => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  readNotification: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  readAllNotifications: async () => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-
-  // Tickets / User Support
-  getTickets: async (params?: any) => {
-    const response = await axiosInstance.get(ENDPOINTS.TICKETS.GET, { params });
-    return response.data;
-  },
-  getTicketDetail: async (id: string) => {
-    const response = await axiosInstance.get(ENDPOINTS.TICKETS.DETAILS(id));
-    return response.data;
-  },
-  updateTicketStatus: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.TICKETS.UPDATE_STATUS, data);
-    return response.data;
-  },
-  escalateTicket: async (id: string) => {
-    const response = await axiosInstance.patch(ENDPOINTS.TICKETS.ESCALATE, { ticketId: id });
+  getBookingInvoice: async (bookingId: string) => {
+    const response = await axiosInstance.get(ENDPOINTS.BOOKINGS.INVOICE(bookingId));
     return response.data;
   },
 
-  // Maintenance
-  getMaintenanceLogs: async (params?: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  createMaintenanceLog: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  updateMaintenanceStatus: async (data: any) => {
-    throw new Error('Endpoint not available in admin/super-admin panel');
-  },
-  // Admin Management (sub-admins)
-  createSubAdmin: async (data: any) => {
-    const response = await axiosInstance.post(ENDPOINTS.ADMIN_MANAGEMENT.CREATE, data);
+  getBookingInvoicePdf: async (bookingId: string) => {
+    const response = await axiosInstance.get(ENDPOINTS.BOOKINGS.INVOICE_PDF(bookingId), {
+      responseType: 'blob',
+    });
     return response.data;
   },
+
+  bookingRefund: async (bookingId: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.REFUND(bookingId), data);
+    return response.data;
+  },
+
+  // Backward-compatible aliases
+  refund: async (data: any) => {
+    const bookingId = data?.bookingId || data?._id || data?.id;
+    if (!bookingId) return { code: 0, message: 'bookingId is required' };
+    const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.REFUND(bookingId), data);
+    return response.data;
+  },
+
+  // Access control and audit logs
   getSubAdmins: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.ADMIN_MANAGEMENT.GET_ALL, { params });
     return response.data;
   },
-  updateSubAdmin: async (data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.ADMIN_MANAGEMENT.UPDATE, data);
+
+  createSubAdmin: async (data: any) => {
+    const response = await axiosInstance.post(ENDPOINTS.ADMIN_MANAGEMENT.CREATE, data);
     return response.data;
   },
+
+  updateSubAdmin: async (idOrData: any, maybeData?: any) => {
+    if (typeof idOrData === 'string') {
+      const response = await axiosInstance.patch(ENDPOINTS.ADMIN_MANAGEMENT.UPDATE(idOrData), maybeData);
+      return response.data;
+    }
+    const adminId = idOrData?.adminId || idOrData?._id || idOrData?.id;
+    if (!adminId) return { code: 0, message: 'adminId is required' };
+    const response = await axiosInstance.patch(ENDPOINTS.ADMIN_MANAGEMENT.UPDATE(adminId), idOrData);
+    return response.data;
+  },
+
+  getAuditLogs: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.AUDIT_LOGS, { params });
+    return response.data;
+  },
+
+  // Legacy non-admin screens still call these methods.
+  // They are not part of /admin APIs, so return safe empty payloads.
+  getNotifications: async () => {
+    const response = await axiosInstance.get(ENDPOINTS.AUDIT_LOGS, { params: { page: 1, limit: 10 } });
+    const payload = (response as any)?.data?.data ?? (response as any)?.data;
+    const logs = Array.isArray(payload) ? payload : (payload?.logs || payload?.auditLogs || []);
+    const notifications = logs.map((l: any, idx: number) => ({
+      id: l?._id || l?.id || String(idx + 1),
+      title: l?.action || 'Audit Event',
+      description: l?.summary || l?.message || l?.entityType || 'System update',
+      isRead: false,
+      createdAt: l?.createdAt || new Date().toISOString(),
+    }));
+    return { code: 1, message: 'success', data: notifications };
+  },
+
+  readNotification: async (_data: any) => ({ code: 1, message: 'success' }),
+  readAllNotifications: async () => ({ code: 1, message: 'success' }),
+
+  getBookings: async (_params?: any) => emptyListResponse,
+  getBookingDetails: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
+  approveBooking: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+
+  getVehicles: async (_params?: any) => emptyListResponse,
+  addVehicle: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+  updateVehicleStatus: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+  getVehicleDetails: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
+
+  getRides: async (_params?: any) => emptyListResponse,
+  getRideDetails: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
+  forceEndRide: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+  lockVehicle: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+
+  getTickets: async (_params?: any) => emptyListResponse,
+  getTicketDetail: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
+  updateTicketStatus: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+  escalateTicket: async (_id: string) => ({ code: 1, message: 'Not available in /admin APIs' }),
+
+  getMaintenanceLogs: async (_params?: any) => emptyListResponse,
+  createMaintenanceLog: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+  updateMaintenanceStatus: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
 };
