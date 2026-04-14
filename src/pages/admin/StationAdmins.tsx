@@ -207,51 +207,51 @@ export default function StationAdmins() {
 
                 <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
-                    <table className="w-full min-w-[860px] text-left">
-                        <thead className="bg-slate-50 border-b border-slate-100">
-                            <tr>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Email/Phone</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Station</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {loading ? (
-                                [...Array(5)].map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td colSpan={5} className="px-6 py-8"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
-                                    </tr>
-                                ))
-                            ) : filteredAdmins.length > 0 ? filteredAdmins.map((admin) => (
-                                <tr key={admin.id || admin._id || admin.email} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-6 py-4 text-[15px] font-semibold text-slate-800">{admin.name || "N/A"}</td>
-                                    <td className="px-6 py-4 text-slate-500">
-                                        <div className="text-sm font-medium text-slate-700">{admin.email || "N/A"}</div>
-                                        <div className="text-xs font-medium text-slate-400 mt-0.5">{admin.phone || "-"}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="inline-flex items-center rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-sm font-medium text-orange-700">
-                                            {resolveAdminStationName(admin)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-3 py-1 text-[10px] font-extrabold rounded-full uppercase tracking-tighter ${admin.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                                            {admin.isActive ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button className="p-2 text-slate-300 hover:text-slate-600 transition-colors"><MoreVertical size={16} /></button>
-                                    </td>
-                                </tr>
-                            )) : (
+                        <table className="w-full min-w-[860px] text-left">
+                            <thead className="bg-slate-50 border-b border-slate-100">
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-medium italic">No station admins found</td>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Email/Phone</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Station</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {loading ? (
+                                    [...Array(5)].map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            <td colSpan={5} className="px-6 py-8"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
+                                        </tr>
+                                    ))
+                                ) : filteredAdmins.length > 0 ? filteredAdmins.map((admin) => (
+                                    <tr key={admin.id || admin._id || admin.email} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-6 py-4 text-[15px] font-semibold text-slate-800">{admin.name || "N/A"}</td>
+                                        <td className="px-6 py-4 text-slate-500">
+                                            <div className="text-sm font-medium text-slate-700">{admin.email || "N/A"}</div>
+                                            <div className="text-xs font-medium text-slate-400 mt-0.5">{admin.phone || "-"}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="inline-flex items-center rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-sm font-medium text-orange-700">
+                                                {resolveAdminStationName(admin)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 text-[10px] font-extrabold rounded-full uppercase tracking-tighter ${admin.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                {admin.isActive ? 'Active' : 'Inactive'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button className="p-2 text-slate-300 hover:text-slate-600 transition-colors"><MoreVertical size={16} /></button>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-medium italic">No station admins found</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

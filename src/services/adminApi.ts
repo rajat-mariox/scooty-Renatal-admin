@@ -111,6 +111,11 @@ export const adminApi = {
     return response.data;
   },
 
+  updateKycStatus: async (userId: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.USERS.KYC_STATUS(userId), data);
+    return response.data;
+  },
+
   // Backward-compatible helper used by current Settings page.
   updateUser: async (userIdOrData: any, maybeData?: any) => {
     if (typeof userIdOrData === 'string') {
