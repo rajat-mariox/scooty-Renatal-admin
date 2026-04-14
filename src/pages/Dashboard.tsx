@@ -139,7 +139,7 @@ export default function Dashboard() {
                                     <MapPin size={18} />
                                     View Live Map
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => navigate('/maintenance/new')}
                                     className="w-full border-2 border-orange-600 text-orange-600 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-50 transition-all"
                                 >

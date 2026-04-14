@@ -99,6 +99,7 @@ export const API_ENDPOINTS = {
     USERS: {
       GET_ALL: '/admin/users',
       UPDATE_STATUS: (id: string) => `/admin/users/${id}/status`,
+      KYC_STATUS: (id: string) => `/admin/users/${id}/kyc-status`,
     },
 
     COMMISSION: {

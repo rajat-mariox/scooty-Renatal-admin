@@ -18,7 +18,7 @@ export default function Finance() {
             else if (activeTab === 'commission') res = await adminApi.getCommission()
             else if (activeTab === 'settlements') res = await adminApi.getSettlements()
             else if (activeTab === 'ledger') res = await adminApi.getLedger()
-            
+
             setData((res as any).data || res)
         } catch (error) {
             console.error(`Failed to fetch ${activeTab} data:`, error)
@@ -31,7 +31,7 @@ export default function Finance() {
         fetchData()
     }, [activeTab])
 
-    const tabs: {id: FinanceTab, label: string, icon: any}[] = [
+    const tabs: { id: FinanceTab, label: string, icon: any }[] = [
         { id: 'pricing', label: 'Pricing Plans', icon: <DollarSign size={18} /> },
         { id: 'commission', label: 'Commission Settings', icon: <BadgePercent size={18} /> },
         { id: 'settlements', label: 'Settlements', icon: <Coins size={18} /> },
@@ -54,11 +54,10 @@ export default function Finance() {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                                activeTab === tab.id 
-                                ? 'bg-orange-600 text-white shadow-lg shadow-orange-100' 
-                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                            }`}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
+                                    ? 'bg-orange-600 text-white shadow-lg shadow-orange-100'
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                                }`}
                         >
                             {tab.icon}
                             {tab.label}
