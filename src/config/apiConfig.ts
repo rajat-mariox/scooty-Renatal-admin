@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'https://mira-ai.marioxsoftware.net/scooty/v1/api';
+export const API_BASE_URL = 'http://localhost:3000/v1/api';
 // dev pupose
 export const API_ENDPOINTS = {
 
@@ -77,6 +77,7 @@ export const API_ENDPOINTS = {
     STATION_ADMINS: {
       GET_ALL: '/admin/station-admins',
       CREATE: '/admin/station-admins',
+      UPDATE: (id: string) => `/admin/station-admins/${id}`,
     },
 
     STATIONS: {

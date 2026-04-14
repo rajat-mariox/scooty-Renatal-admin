@@ -53,6 +53,11 @@ export const adminApi = {
     return response.data;
   },
 
+  updateStationAdmin: async (id: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.STATION_ADMINS.UPDATE(id), data);
+    return response.data;
+  },
+
   // Stations
   getStations: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.STATIONS.GET_ALL, { params });
@@ -103,6 +108,11 @@ export const adminApi = {
   // Users
   getUsers: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.USERS.GET_ALL, { params });
+    return response.data;
+  },
+
+  getUserById: async (userId: string) => {
+    const response = await axiosInstance.get(`${ENDPOINTS.USERS.GET_ALL}/${userId}`);
     return response.data;
   },
 

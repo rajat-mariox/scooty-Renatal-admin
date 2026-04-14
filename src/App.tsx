@@ -21,6 +21,8 @@ const AddVehicle = lazy(() => import("./pages/AddVehicle"))
 const StationAdmins = lazy(() => import("./pages/admin/StationAdmins"))
 const AddStation = lazy(() => import("./pages/admin/AddStation"))
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"))
+const OwnerManagement = lazy(() => import("./pages/admin/OwnerManagement"))
+const UserDetail = lazy(() => import("./pages/admin/UserDetail"))
 const Finance = lazy(() => import("./pages/admin/Finance"))
 
 // Loading component
@@ -62,6 +64,9 @@ function App() {
           <Route path="/admin/station-admins" element={<StationAdmins />} />
           <Route path="/admin/stations/add" element={<AddStation />} />
           <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/owners" element={<OwnerManagement />} />
+          <Route path="/admin/users/:userId" element={<UserDetail />} />
+          <Route path="/admin/owners/:userId" element={<UserDetail />} />
           <Route path="/admin/finance" element={<Finance />} />
         </Routes>
       </Suspense>
