@@ -30,22 +30,17 @@ export default function MaintenanceDetail() {
 
             setLoading(true)
             try {
-                // Since there is no single log detail endpoint, fetch all and filter
-                const response = await adminApi.getMaintenanceLogs()
+                const response = await adminApi.getMaintenanceDetail(id)
                 const data = (response as any).data || response
-                const fetchedLogs = Array.isArray(data.logs) ? data.logs : (Array.isArray(data) ? data : [])
-                
-                const logData = fetchedLogs.find((log: any) => 
-                    String(log.logId || log.id) === String(id)
-                )
+                const logData = data.request || data
 
                 if (logData) {
                     const formattedData = {
                         id: logData.logId || logData.id || "N/A",
-                        vehicleId: logData.vehicleId || logData.vehicle?.id || "N/A",
+                        vehicleId: logData.vehicleId?.registrationNumber || logData.vehicleId?.id || logData.vehicleId || logData.vehicle?.id || "N/A",
                         issueType: logData.issueType || "General Maintenance",
                         date: logData.date || logData.createdAt ? new Date(logData.date || logData.createdAt).toISOString().split('T')[0] : "N/A",
-                        cost: logData.cost ? `₹${logData.cost}` : "-",
+                        cost: logData.cost || logData.estimatedCost ? `₹${logData.cost || logData.estimatedCost}` : "-",
                         description: logData.description || "No description provided."
                     }
                     setCurrentData(formattedData)
@@ -68,8 +63,7 @@ export default function MaintenanceDetail() {
     const handleUpdateStatus = async (newStatus: string) => {
         setActionLoading(true)
         try {
-            await adminApi.updateMaintenanceStatus({
-                logId: id,
+            await adminApi.updateMaintenanceStatus(id!, {
                 status: newStatus
             })
             setCurrentStatus(newStatus)

@@ -105,6 +105,47 @@ export const adminApi = {
     return response.data;
   },
 
+  // Vehicles
+  getVehicles: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.VEHICLES.GET, { params });
+    return response.data;
+  },
+
+  addVehicle: async (data: any) => {
+    const response = await axiosInstance.post(ENDPOINTS.VEHICLES.CREATE, data);
+    return response.data;
+  },
+
+  getVehicleDetails: async (vehicleId: string) => {
+    const response = await axiosInstance.get(ENDPOINTS.VEHICLES.DETAILS(vehicleId));
+    return response.data;
+  },
+
+  updateVehicleStatus: async (vehicleId: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.VEHICLES.UPDATE_STATUS(vehicleId), data);
+    return response.data;
+  },
+
+  getMaintenanceLogs: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.MAINTENANCE.GET_LOGS, { params });
+    return response.data;
+  },
+
+  createMaintenanceLog: async (data: any) => {
+    const response = await axiosInstance.post(ENDPOINTS.MAINTENANCE.CREATE_LOG, data);
+    return response.data;
+  },
+
+  getMaintenanceDetail: async (requestId: string) => {
+    const response = await axiosInstance.get(ENDPOINTS.MAINTENANCE.DETAILS(requestId));
+    return response.data;
+  },
+
+  updateMaintenanceStatus: async (requestId: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.MAINTENANCE.UPDATE_STATUS(requestId), data);
+    return response.data;
+  },
+
   // Users
   getUsers: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.USERS.GET_ALL, { params });
@@ -256,31 +297,24 @@ export const adminApi = {
 
   // Legacy non-admin screens still call these methods.
   // They are not part of /admin APIs, so return safe empty payloads.
-  getNotifications: async () => {
-    const response = await axiosInstance.get(ENDPOINTS.AUDIT_LOGS, { params: { page: 1, limit: 10 } });
-    const payload = (response as any)?.data?.data ?? (response as any)?.data;
-    const logs = Array.isArray(payload) ? payload : (payload?.logs || payload?.auditLogs || []);
-    const notifications = logs.map((l: any, idx: number) => ({
-      id: l?._id || l?.id || String(idx + 1),
-      title: l?.action || 'Audit Event',
-      description: l?.summary || l?.message || l?.entityType || 'System update',
-      isRead: false,
-      createdAt: l?.createdAt || new Date().toISOString(),
-    }));
-    return { code: 1, message: 'success', data: notifications };
+  getNotifications: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.NOTIFICATIONS.GET, { params });
+    return response.data;
   },
 
-  readNotification: async (_data: any) => ({ code: 1, message: 'success' }),
-  readAllNotifications: async () => ({ code: 1, message: 'success' }),
+  readNotification: async (notificationId: string, data?: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.NOTIFICATIONS.READ(notificationId), data);
+    return response.data;
+  },
+
+  readAllNotifications: async (data?: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.NOTIFICATIONS.READ_ALL, data);
+    return response.data;
+  },
 
   getBookings: async (_params?: any) => emptyListResponse,
   getBookingDetails: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
   approveBooking: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
-
-  getVehicles: async (_params?: any) => emptyListResponse,
-  addVehicle: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
-  updateVehicleStatus: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
-  getVehicleDetails: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
 
   getRides: async (_params?: any) => emptyListResponse,
   getRideDetails: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
@@ -292,7 +326,4 @@ export const adminApi = {
   updateTicketStatus: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
   escalateTicket: async (_id: string) => ({ code: 1, message: 'Not available in /admin APIs' }),
 
-  getMaintenanceLogs: async (_params?: any) => emptyListResponse,
-  createMaintenanceLog: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
-  updateMaintenanceStatus: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
 };

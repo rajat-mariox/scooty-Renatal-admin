@@ -1,15 +1,20 @@
 import { Zap, Wrench, MapPin, Clock, Check, RefreshCw, AlertCircle } from "lucide-react"
 import MainLayout from "../layouts/MainLayout"
-import { ReactNode, useState, useEffect } from "react"
+import { ReactNode, useState, useEffect, useCallback } from "react"
 import { adminApi } from "../services/adminApi"
 
 export default function Notifications() {
     const [notifications, setNotifications] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
     const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
 
-    const fetchNotifications = async () => {
-        setLoading(true)
+    const fetchNotifications = useCallback(async (silent = false) => {
+        if (silent) {
+            setRefreshing(true)
+        } else {
+            setLoading(true)
+        }
         try {
             const response = await adminApi.getNotifications()
             const data = (response as any).data || response
@@ -19,8 +24,9 @@ export default function Notifications() {
             console.error("Failed to fetch notifications:", error)
         } finally {
             setLoading(false)
+            setRefreshing(false)
         }
-    }
+    }, [])
 
     const markAllAsRead = async () => {
         try {
@@ -31,9 +37,31 @@ export default function Notifications() {
         }
     }
 
+    const markNotificationRead = async (notificationId: string) => {
+        try {
+            await adminApi.readNotification(notificationId)
+            setNotifications(prev => prev.map(n => n.id === notificationId || n._id === notificationId ? { ...n, isRead: true } : n))
+        } catch (error) {
+            console.error("Failed to mark notification as read:", error)
+        }
+    }
+
     useEffect(() => {
         fetchNotifications()
-    }, [])
+        const timer = window.setInterval(() => fetchNotifications(true), 15000)
+
+        const onVisibilityChange = () => {
+            if (!document.hidden) {
+                fetchNotifications(true)
+            }
+        }
+
+        document.addEventListener("visibilitychange", onVisibilityChange)
+        return () => {
+            window.clearInterval(timer)
+            document.removeEventListener("visibilitychange", onVisibilityChange)
+        }
+    }, [fetchNotifications])
 
     const unreadCount = notifications.filter(n => !n.isRead).length
     
@@ -63,7 +91,7 @@ export default function Notifications() {
                             Stay updated with alerts and system events
                         </p>
                     </div>
-                    {loading && <RefreshCw className="animate-spin text-orange-500 mb-1" size={20} />}
+                    {(loading || refreshing) && <RefreshCw className="animate-spin text-orange-500 mb-1" size={20} />}
                 </div>
 
                 {/* Notifications List Container */}
@@ -119,11 +147,13 @@ export default function Notifications() {
                             <NotificationCard
                                 key={notification.id || index}
                                 icon={getIconForType(notification.type || notification.title)}
+                                id={notification.id || notification._id}
                                 title={notification.title || "Notification"}
                                 description={notification.message || notification.description || ""}
                                 time={notification.createdAt ? new Date(notification.createdAt).toLocaleString() : "Recently"}
                                 hasLink={!!notification.link || !!notification.actionUrl}
                                 isNew={!notification.isRead}
+                                onMarkRead={() => markNotificationRead(notification.id || notification._id)}
                             />
                         )) : !loading && (
                             <div className="bg-white rounded-3xl border border-dashed border-slate-200 py-16 flex flex-col items-center justify-center text-center px-6">
@@ -170,14 +200,17 @@ function NotificationCard({
     description,
     time,
     hasLink,
-    isNew
+    isNew,
+    onMarkRead
 }: {
     icon: ReactNode,
+    id?: string,
     title: string,
     description: string,
     time: string,
     hasLink?: boolean,
-    isNew?: boolean
+    isNew?: boolean,
+    onMarkRead?: () => void
 }) {
     return (
         <div className={`bg-white rounded-3xl border ${isNew ? 'border-orange-100 shadow-sm' : 'border-slate-100'} p-6 sm:p-8 flex items-start gap-4 sm:gap-6 relative group hover:shadow-md transition-all`}>
@@ -199,6 +232,11 @@ function NotificationCard({
                     {hasLink && (
                         <button className="text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">
                             View Details →
+                        </button>
+                    )}
+                    {isNew && onMarkRead && (
+                        <button onClick={onMarkRead} className="text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                            Mark Read
                         </button>
                     )}
                 </div>

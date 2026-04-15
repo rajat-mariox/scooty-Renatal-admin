@@ -14,7 +14,7 @@ import {
     MapPin,
     ChevronDown
 } from "lucide-react"
-import { useState, ReactNode, useEffect } from "react"
+import { useState, ReactNode, useEffect, useCallback } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { adminApi } from "../services/adminApi"
 
@@ -52,57 +52,75 @@ export default function MainLayout({ children }: MainLayoutProps) {
         return { name: "Admin", role: "" }
     })
 
+    const fetchStations = useCallback(async () => {
+        try {
+            const stationRes = await adminApi.getStations()
+            const sData = (stationRes as any).data ?? stationRes
+            const list = Array.isArray(sData)
+                ? sData
+                : Array.isArray(sData?.stations)
+                ? sData.stations
+                : Array.isArray(sData?.data)
+                ? sData.data
+                : []
+            setStations(list)
+        } catch (err) {
+            console.error("[MainLayout] stations fetch failed:", err)
+        }
+    }, [])
+
+    const fetchNotifications = useCallback(async () => {
+        try {
+            const notifyRes = await adminApi.getNotifications({ limit: 100 })
+            const nData = (notifyRes as any)?.data ?? notifyRes
+            const nList = Array.isArray(nData)
+                ? nData
+                : Array.isArray(nData?.notifications)
+                ? nData.notifications
+                : []
+            const unread = typeof nData?.unreadCount === "number"
+                ? nData.unreadCount
+                : nList.filter((n: any) => !n.isRead).length
+            setUnreadCount(unread)
+        } catch (err) {
+            console.error("[MainLayout] notifications fetch failed:", err)
+        }
+    }, [])
+
+    const fetchAdminProfile = useCallback(async () => {
+        try {
+            const meRes = await adminApi.getAdminDetails()
+            const me = (meRes as any)?.data ?? meRes
+            const name = me?.name || me?.fullName || "Admin"
+            const role = parseRoleLabel(me?.role || me?.adminType || "")
+            setAdminProfile({ name, role })
+            localStorage.setItem("admin_details", JSON.stringify(me))
+        } catch (err) {
+            console.error("[MainLayout] admin profile fetch failed:", err)
+        }
+    }, [])
+
     useEffect(() => {
-        // Fetch stations independently so other failures don't block it
-        const fetchStations = async () => {
-            try {
-                const stationRes = await adminApi.getStations()
-                console.log("[MainLayout] raw stationRes:", stationRes)
-                const sData = (stationRes as any).data ?? stationRes
-                const list = Array.isArray(sData)
-                    ? sData
-                    : Array.isArray(sData?.stations)
-                    ? sData.stations
-                    : Array.isArray(sData?.data)
-                    ? sData.data
-                    : []
-                console.log("[MainLayout] parsed stations:", list)
-                setStations(list)
-            } catch (err) {
-                console.error("[MainLayout] stations fetch failed:", err)
-            }
-        }
-
-        // Fetch notifications independently
-        const fetchNotifications = async () => {
-            try {
-                const notifyRes = await adminApi.getNotifications()
-                const nData = (notifyRes as any).data ?? notifyRes
-                const nList = Array.isArray(nData) ? nData : (nData?.notifications || [])
-                setUnreadCount(nList.filter((n: any) => !n.isRead).length)
-            } catch (err) {
-                console.error("[MainLayout] notifications fetch failed:", err)
-            }
-        }
-
-        // Fetch admin profile independently
-        const fetchAdminProfile = async () => {
-            try {
-                const meRes = await adminApi.getAdminDetails()
-                const me = (meRes as any)?.data ?? meRes
-                const name = me?.name || me?.fullName || "Admin"
-                const role = parseRoleLabel(me?.role || me?.adminType || "")
-                setAdminProfile({ name, role })
-                localStorage.setItem("admin_details", JSON.stringify(me))
-            } catch (err) {
-                console.error("[MainLayout] admin profile fetch failed:", err)
-            }
-        }
-
         fetchStations()
         fetchNotifications()
         fetchAdminProfile()
-    }, [])
+
+        const interval = window.setInterval(() => {
+            fetchNotifications()
+        }, 15000)
+
+        const onVisibilityChange = () => {
+            if (!document.hidden) {
+                fetchNotifications()
+            }
+        }
+
+        document.addEventListener("visibilitychange", onVisibilityChange)
+        return () => {
+            window.clearInterval(interval)
+            document.removeEventListener("visibilitychange", onVisibilityChange)
+        }
+    }, [fetchStations, fetchNotifications, fetchAdminProfile])
 
     const sidebarItems = [
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} strokeWidth={2.5} /> },

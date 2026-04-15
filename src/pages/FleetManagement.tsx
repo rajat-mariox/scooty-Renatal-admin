@@ -16,13 +16,18 @@ export default function FleetManagement() {
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState("All")
     const [isFilterOpen, setIsFilterOpen] = useState(false)
+    const [isStationOpen, setIsStationOpen] = useState(false)
     const [openMenuId, setOpenMenuId] = useState<string | null>(null)
     const [modalAction, setModalAction] = useState<{ type: string, text: string, id: string } | null>(null)
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState(false)
     const [vehicles, setVehicles] = useState<any[]>([])
+    const [stations, setStations] = useState<any[]>([])
+    const [selectedStationId, setSelectedStationId] = useState<string>("all")
+    const [selectedStationLabel, setSelectedStationLabel] = useState<string>("All Stations")
     const menuRef = useRef<HTMLDivElement>(null)
     const filterRef = useRef<HTMLDivElement>(null)
+    const stationRef = useRef<HTMLDivElement>(null)
 
     // Close menu/filter on click outside
     useEffect(() => {
@@ -33,26 +38,54 @@ export default function FleetManagement() {
             if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
                 setIsFilterOpen(false)
             }
+            if (stationRef.current && !stationRef.current.contains(event.target as Node)) {
+                setIsStationOpen(false)
+            }
         }
         document.addEventListener("mousedown", handleClickOutside)
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
-    const fetchVehicles = async () => {
+    useEffect(() => {
+        const savedStationId = localStorage.getItem("fleet_selected_station_id")
+        const savedStationLabel = localStorage.getItem("fleet_selected_station_label")
+        if (savedStationId) setSelectedStationId(savedStationId)
+        if (savedStationLabel) setSelectedStationLabel(savedStationLabel)
+    }, [])
+
+    const fetchStations = async () => {
+        try {
+            const response = await adminApi.getStations()
+            const data = (response as any).data || response
+            const fetchedStations = Array.isArray(data.stations)
+                ? data.stations
+                : Array.isArray(data)
+                    ? data
+                    : []
+            setStations(fetchedStations)
+        } catch (error) {
+            console.error("Failed to fetch stations:", error)
+        }
+    }
+
+    const fetchVehicles = async (stationId?: string) => {
         setLoading(true)
         try {
-            const response = await adminApi.getVehicles()
+            const queryStationId = stationId && stationId !== "all" ? stationId : undefined
+            const response = await adminApi.getVehicles(queryStationId ? { stationId: queryStationId } : undefined)
             const data = (response as any).data || response
             
             // Format data if needed so it matches the table expectation
             const fetchedVehicles = Array.isArray(data.vehicles) ? data.vehicles : (Array.isArray(data) ? data : [])
             const mappedVehicles = fetchedVehicles.map((v: any) => ({
-                id: v.vehicleId || v.id || "N/A",
-                model: v.model || "Unknown Model",
-                battery: v.batteryLevel !== undefined ? v.batteryLevel : (v.battery || 0),
-                status: v.status || "Active",
-                location: v.location || v.currentLocation || "Station",
-                lastRide: v.lastRide || "N/A"
+                id: v._id || v.vehicleId || v.id || "N/A",
+                vehicleId: v.vehicleId || v.registrationNumber || v.id || v._id || "N/A",
+                registrationNumber: v.registrationNumber || v.vehicleId || v.id || "N/A",
+                model: v.modelName || v.model || "Unknown Model",
+                battery: v.batteryPercent !== undefined ? v.batteryPercent : (v.batteryLevel !== undefined ? v.batteryLevel : (v.battery || 0)),
+                status: String(v.status || "ACTIVE").replace(/_/g, " "),
+                location: v.locationLabel || v.location || v.currentLocation || v.station?.name || "Station",
+                lastRide: v.lastRide?.rideId || v.lastRide?.id || v.lastRide || "N/A"
             }))
 
             setVehicles(mappedVehicles)
@@ -64,8 +97,12 @@ export default function FleetManagement() {
     }
 
     useEffect(() => {
-        fetchVehicles()
+        fetchStations()
     }, [])
+
+    useEffect(() => {
+        fetchVehicles(selectedStationId)
+    }, [selectedStationId])
 
     const handleConfirmAction = async () => {
         if (!modalAction) return
@@ -74,9 +111,8 @@ export default function FleetManagement() {
             let statusToUpdate = modalAction.type === 'charging' ? 'Charging' : 
                                  modalAction.type === 'maintenance' ? 'Maintenance' : 'Active'
                                  
-            await adminApi.updateVehicleStatus({
-                vehicleId: modalAction.id,
-                status: statusToUpdate
+            await adminApi.updateVehicleStatus(modalAction.id, {
+                status: statusToUpdate.toUpperCase().replace(" ", "_")
             })
             // Refresh list
             await fetchVehicles()
@@ -91,11 +127,13 @@ export default function FleetManagement() {
     const filteredVehicles = vehicles.filter((v) => {
         const query = searchQuery.toLowerCase()
         const matchesSearch = (
+            v.registrationNumber.toLowerCase().includes(query) ||
             v.id.toLowerCase().includes(query) ||
             v.model.toLowerCase().includes(query) ||
             v.location.toLowerCase().includes(query)
         )
-        const matchesStatus = statusFilter === "All" || v.status === statusFilter
+        const normalizedStatus = String(v.status || "").toLowerCase()
+        const matchesStatus = statusFilter === "All" || normalizedStatus === statusFilter.toLowerCase()
         
         return matchesSearch && matchesStatus
     })
@@ -154,11 +192,64 @@ export default function FleetManagement() {
                                 </div>
                             )}
                         </div>
-                        <div className="relative group">
-                            <button className="flex items-center gap-8 px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all">
-                                Select Station
-                                <ChevronDown size={14} className="text-slate-400" />
+                        <div className="relative" ref={stationRef}>
+                            <button
+                                onClick={() => setIsStationOpen(!isStationOpen)}
+                                className={`flex items-center justify-between gap-8 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                                    selectedStationId === "all"
+                                        ? "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                                        : "bg-orange-50 border-orange-200 text-orange-700"
+                                }`}
+                            >
+                                <span className="max-w-[180px] truncate">{selectedStationLabel}</span>
+                                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isStationOpen ? "rotate-180" : ""}`} />
                             </button>
+
+                            {isStationOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 overflow-hidden shadow-orange-500/5">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedStationId("all")
+                                            setSelectedStationLabel("All Stations")
+                                            localStorage.setItem("fleet_selected_station_id", "all")
+                                            localStorage.setItem("fleet_selected_station_label", "All Stations")
+                                            setIsStationOpen(false)
+                                        }}
+                                        className={`w-full text-left px-6 py-2.5 text-sm font-bold transition-all ${
+                                            selectedStationId === "all"
+                                                ? "text-orange-600 bg-orange-50"
+                                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                                        }`}
+                                    >
+                                        All Stations
+                                    </button>
+                                    <div className="h-px bg-slate-50 my-2 mx-4" />
+                                    {stations.map((station) => {
+                                        const id = String(station?._id || station?.id || station?.stationId || "").trim()
+                                        const name = String(station?.name || station?.stationName || "Unknown Station").trim()
+                                        if (!id) return null
+                                        return (
+                                            <button
+                                                key={id}
+                                                onClick={() => {
+                                                    setSelectedStationId(id)
+                                                    setSelectedStationLabel(name)
+                                                    localStorage.setItem("fleet_selected_station_id", id)
+                                                    localStorage.setItem("fleet_selected_station_label", name)
+                                                    setIsStationOpen(false)
+                                                }}
+                                                className={`w-full text-left px-6 py-2.5 text-sm font-bold transition-all ${
+                                                    selectedStationId === id
+                                                        ? "text-orange-600 bg-orange-50"
+                                                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                                                }`}
+                                            >
+                                                {name}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            )}
                         </div>
                         <button
                             onClick={() => navigate('/add-vehicle')}
@@ -200,7 +291,7 @@ export default function FleetManagement() {
                                     className="hover:bg-slate-50/30 transition-all cursor-pointer group"
                                 >
                                     <td className="px-6 py-6 text-sm font-bold text-slate-700">
-                                        {v.id}
+                                        {v.registrationNumber}
                                     </td>
                                     <td className="px-6 py-6 text-sm font-medium text-slate-500">
                                         {v.model}
@@ -223,10 +314,11 @@ export default function FleetManagement() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-6">
-                                        <span className={`px-4 py-1.5 text-[10px] font-bold rounded-full transition-all ${v.status === 'Active' ? 'bg-green-100/50 text-green-600' :
-                                            v.status === 'In Ride' ? 'bg-blue-100/50 text-blue-600' :
-                                                v.status === 'Charging' ? 'bg-yellow-100/50 text-yellow-600' :
-                                                    'bg-rose-100/50 text-rose-600'
+                                        <span className={`px-4 py-1.5 text-[10px] font-bold rounded-full transition-all ${v.status === 'ACTIVE' ? 'bg-green-100/50 text-green-600' :
+                                            v.status === 'IN RIDE' ? 'bg-blue-100/50 text-blue-600' :
+                                                v.status === 'CHARGING' ? 'bg-yellow-100/50 text-yellow-600' :
+                                                    v.status === 'MAINTENANCE' ? 'bg-rose-100/50 text-rose-600' :
+                                                    'bg-slate-100/50 text-slate-600'
                                             }`}>
                                             {v.status}
                                         </span>
@@ -342,4 +434,3 @@ export default function FleetManagement() {
         </MainLayout>
     )
 }
-

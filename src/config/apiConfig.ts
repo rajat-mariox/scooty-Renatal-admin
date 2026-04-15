@@ -103,6 +103,12 @@ export const API_ENDPOINTS = {
       KYC_STATUS: (id: string) => `/admin/users/${id}/kyc-status`,
     },
 
+    NOTIFICATIONS: {
+      GET: '/admin/notifications',
+      READ: (notificationId: string) => `/admin/notifications/${notificationId}/read`,
+      READ_ALL: '/admin/notifications/read-all',
+    },
+
     COMMISSION: {
       GET: '/admin/commission',
       UPDATE: '/admin/commission',
@@ -133,6 +139,18 @@ export const API_ENDPOINTS = {
       INVOICE: (id: string) => `/admin/bookings/${id}/invoice`,
       INVOICE_PDF: (id: string) => `/admin/bookings/${id}/invoice/pdf`,
       REFUND: (id: string) => `/admin/bookings/${id}/refund`,
+    },
+    VEHICLES: {
+      GET: '/admin/vehicles',
+      CREATE: '/admin/vehicles',
+      DETAILS: (id: string) => `/admin/vehicles/${id}`,
+      UPDATE_STATUS: (id: string) => `/admin/vehicles/${id}/status`,
+    },
+    MAINTENANCE: {
+      GET_LOGS: '/admin/maintenance-logs',
+      CREATE_LOG: '/admin/maintenance-logs',
+      DETAILS: (requestId: string) => `/admin/maintenance-logs/${requestId}`,
+      UPDATE_STATUS: (requestId: string) => `/admin/maintenance-logs/${requestId}/status`,
     },
     LEDGER: '/admin/ledger',
   },

@@ -278,7 +278,7 @@ export default function StationAdmins() {
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
 
                     <div className="flex flex-wrap items-center gap-3">
-                    
+
 
                         <button
                             onClick={() => { setIsAddModalOpen(true); setAddAdminError("") }}
@@ -287,7 +287,7 @@ export default function StationAdmins() {
                             <UserPlus size={18} />
                             Add Admin
                         </button>
-                            <button
+                        <button
                             onClick={() => {
                                 setPage(1)
                                 fetchData(1, searchQuery, limit)
@@ -336,6 +336,7 @@ export default function StationAdmins() {
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Email/Phone</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Station</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Role</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                                 </tr>
@@ -360,6 +361,11 @@ export default function StationAdmins() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
+                                            <span className="inline-flex items-center rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-sm font-medium text-orange-700">
+                                                {admin.role || "N/A"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
                                             <span className={`px-3 py-1 text-[10px] font-extrabold rounded-full uppercase tracking-tighter ${admin.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                                                 {admin.isActive ? 'Active' : 'Inactive'}
                                             </span>
@@ -377,11 +383,10 @@ export default function StationAdmins() {
                                                 <button
                                                     type="button"
                                                     onClick={() => toggleAdminStatus(admin)}
-                                                    className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                                                        admin.isActive
+                                                    className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${admin.isActive
                                                             ? "bg-rose-600 text-white hover:bg-rose-700"
                                                             : "bg-green-600 text-white hover:bg-green-700"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {admin.isActive ? "Deactivate" : "Activate"}
                                                 </button>
@@ -548,11 +553,10 @@ export default function StationAdmins() {
                                     <button
                                         type="button"
                                         onClick={() => setEditAdminState((prev) => ({ ...prev, isActive: !prev.isActive }))}
-                                        className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                                            editAdminState.isActive
+                                        className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${editAdminState.isActive
                                                 ? "bg-green-600 text-white hover:bg-green-700"
                                                 : "bg-rose-600 text-white hover:bg-rose-700"
-                                        }`}
+                                            }`}
                                     >
                                         {editAdminState.isActive ? "Active" : "Inactive"}
                                     </button>
