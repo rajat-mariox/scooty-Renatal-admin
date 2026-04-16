@@ -1,216 +1,342 @@
 import {
-    Bike,
-    CheckCircle2,
-    Send,
-    Wrench,
-    Zap,
-    Clock,
-    Navigation,
-    AlertTriangle,
-    Plus,
+    Users,
     MapPin,
-    RefreshCw
+    Bike,
+    CalendarCheck,
+    IndianRupee,
+    ClipboardCheck,
+    Landmark,
+    HeadphonesIcon,
+    RefreshCw,
+    UserCheck,
+    UserX,
+    ShieldCheck,
+    ChevronRight,
+    Clock,
+    TrendingUp
 } from "lucide-react"
 import MainLayout from "../layouts/MainLayout"
-import { ReactNode, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { adminApi } from "../services/adminApi"
+
+interface DashboardData {
+    users: {
+        total: number
+        active: number
+        blocked: number
+        byRole: Record<string, number>
+    }
+    stations: { total: number }
+    vehicles: { total: number }
+    bookings: {
+        total: number
+        today: number
+        byStatus: Record<string, number>
+    }
+    revenue: {
+        total: number
+        today: number
+        asOf: string
+    }
+    approvals: {
+        ridePlans: number
+        faqs: number
+    }
+    settlements: { pending: number }
+    support: { openTickets: number }
+}
+
+const formatCurrency = (val: number) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(val)
+
+const roleLabelMap: Record<string, string> = {
+    ADMIN: "Admin",
+    STATION_ADMIN: "Station Admin",
+    SUB_STATION_ADMIN: "Sub Station Admin",
+    OWNER: "Owner",
+}
+
+const roleColorMap: Record<string, string> = {
+    ADMIN: "bg-orange-500",
+    STATION_ADMIN: "bg-slate-500",
+    SUB_STATION_ADMIN: "bg-slate-400",
+    OWNER: "bg-slate-600",
+}
 
 export default function Dashboard() {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
-    const [stats, setStats] = useState([
-        { label: "Total Scooties", value: "0", icon: <Bike className="text-white" size={20} />, iconBg: "bg-blue-600", key: "total" },
-        { label: "Active", value: "0", icon: <CheckCircle2 className="text-white" size={20} />, iconBg: "bg-green-500", key: "active" },
-        { label: "In Ride", value: "0", icon: <Send className="text-white" size={20} />, iconBg: "bg-orange-500", key: "inRide" },
-        { label: "Maintenance", value: "0", icon: <Wrench className="text-white" size={20} />, iconBg: "bg-rose-500", key: "maintenance" },
-        { label: "Charging", value: "0", icon: <Zap className="text-white" size={20} />, iconBg: "bg-yellow-500", key: "charging" },
-    ])
-    const [activities, setActivities] = useState<any[]>([])
-    const [alerts, setAlerts] = useState<any[]>([])
+    const [data, setData] = useState<DashboardData | null>(null)
+    const [lastUpdated, setLastUpdated] = useState<string>("")
+
+    const fetchDashboard = async () => {
+        setLoading(true)
+        try {
+            const response = await adminApi.getDashboardStats()
+            const payload = (response as any)?.data ?? response
+            const dashboard: DashboardData | undefined = (payload as any)?.dashboard ?? payload
+            if (dashboard) {
+                setData(dashboard)
+                setLastUpdated(new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }))
+            }
+        } catch (error) {
+            console.error("Failed to fetch dashboard stats:", error)
+        } finally {
+            setLoading(false)
+        }
+    }
 
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            setLoading(true)
-            try {
-                const response = await adminApi.getDashboardStats()
-                const data = (response as any).data || response
-
-                // Map stats from API
-                setStats(prev => prev.map(s => ({
-                    ...s,
-                    value: String(data.stats?.[s.key] || data[s.key] || 0)
-                })))
-
-                // Set activities and alerts if available
-                setActivities(data.activities || [])
-                setAlerts(data.alerts || [])
-            } catch (error) {
-                console.error("Failed to fetch dashboard stats:", error)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        fetchDashboardData()
+        fetchDashboard()
     }, [])
+
+    const primaryCards = [
+        {
+            label: "Total Users",
+            value: data?.users.total ?? 0,
+            sub: `${data?.users.active ?? 0} active · ${data?.users.blocked ?? 0} blocked`,
+            icon: <Users size={20} className="text-orange-500" />,
+        },
+        {
+            label: "Stations",
+            value: data?.stations.total ?? 0,
+            sub: "Total registered stations",
+            icon: <MapPin size={20} className="text-orange-500" />,
+        },
+        {
+            label: "Vehicles",
+            value: data?.vehicles.total ?? 0,
+            sub: "Total registered vehicles",
+            icon: <Bike size={20} className="text-orange-500" />,
+        },
+        {
+            label: "Bookings",
+            value: data?.bookings.total ?? 0,
+            sub: `${data?.bookings.today ?? 0} today`,
+            icon: <CalendarCheck size={20} className="text-orange-500" />,
+        },
+    ]
+
+    const actionCards = [
+        {
+            label: "Pending Approvals",
+            value: (data?.approvals.ridePlans ?? 0) + (data?.approvals.faqs ?? 0),
+            sub: `${data?.approvals.ridePlans ?? 0} ride plans · ${data?.approvals.faqs ?? 0} FAQs`,
+            icon: <ClipboardCheck size={18} className="text-slate-500" />,
+            route: "/admin/approvals",
+        },
+        {
+            label: "Pending Settlements",
+            value: data?.settlements.pending ?? 0,
+            sub: "Awaiting processing",
+            icon: <Landmark size={18} className="text-slate-500" />,
+            route: "/admin/finance",
+        },
+        {
+            label: "Open Support Tickets",
+            value: data?.support.openTickets ?? 0,
+            sub: "Unresolved tickets",
+            icon: <HeadphonesIcon size={18} className="text-slate-500" />,
+            route: "/support",
+        },
+    ]
 
     return (
         <MainLayout>
-            <div className="space-y-8">
-                {/* Welcome Section */}
-                <div className="flex justify-between items-end">
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-bold">Dashboard</h2>
-                        <p className="text-slate-500 text-sm mt-1">
-                            Welcome back, Admin User • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                        <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
+                        <p className="text-slate-400 text-sm mt-1 flex items-center gap-1.5">
+                            <Clock size={12} />
+                            {new Date().toLocaleDateString("en-IN", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                            {lastUpdated && (
+                                <span className="ml-2 text-orange-500 font-medium">· Updated {lastUpdated}</span>
+                            )}
                         </p>
                     </div>
-                    {loading && <RefreshCw className="animate-spin text-orange-500 mb-2" size={20} />}
+                    <button
+                        onClick={fetchDashboard}
+                        disabled={loading}
+                        className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 text-sm font-medium px-4 py-2 rounded-xl hover:bg-slate-50 transition-all shadow-sm disabled:opacity-60"
+                    >
+                        <RefreshCw size={14} className={loading ? "animate-spin text-orange-500" : ""} />
+                        Refresh
+                    </button>
                 </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-5 gap-4">
-                    {stats.map((stat) => (
-                        <div key={stat.label} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between h-32">
-                            <div className="flex justify-between items-start">
-                                <span className="text-slate-500 text-xs font-medium">{stat.label}</span>
-                                <div className={`${stat.iconBg} p-2 rounded-xl`}>
-                                    {stat.icon}
+                {/* Primary Stat Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {primaryCards.map((card) => (
+                        <div
+                            key={card.label}
+                            className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 text-left"
+                        >
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="bg-orange-50 p-2.5 rounded-xl">
+                                    {card.icon}
                                 </div>
                             </div>
-                            <div className="text-3xl font-bold">
-                                {loading ? <div className="h-8 w-12 bg-slate-100 animate-pulse rounded" /> : stat.value}
-                            </div>
+                            {loading ? (
+                                <div className="h-8 w-16 bg-slate-100 animate-pulse rounded-lg mb-1" />
+                            ) : (
+                                <div className="text-3xl font-bold text-slate-800">{card.value}</div>
+                            )}
+                            <div className="text-sm font-semibold text-slate-700 mt-0.5">{card.label}</div>
+                            <div className="text-xs text-slate-400 mt-1">{card.sub}</div>
                         </div>
                     ))}
                 </div>
 
-                {/* Cards Grid */}
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left Box: Live Activity */}
-                    <div className="col-span-8 bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-lg font-bold">Live Activity Feed</h3>
-                            <Clock className="text-slate-300" size={20} />
-                        </div>
+                {/* Revenue + User Roles */}
+                <div className="grid grid-cols-12 gap-6">
+                    {/* Revenue */}
+                    <div className="col-span-12 lg:col-span-5">
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 h-full">
+                            <div className="flex items-center justify-between mb-5">
+                                <h3 className="text-base font-bold text-slate-800">Revenue Overview</h3>
+                                <span className="text-xs text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                                    As of {data?.revenue.asOf
+                                        ? new Date(data.revenue.asOf).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+                                        : "--"}
+                                </span>
+                            </div>
 
-                        <div className="space-y-6">
-                            {loading ? (
-                                [...Array(4)].map((_, i) => (
-                                    <div key={i} className="flex gap-4 animate-pulse">
-                                        <div className="w-10 h-10 bg-slate-100 rounded-xl" />
-                                        <div className="flex-1 space-y-2">
-                                            <div className="h-4 bg-slate-100 rounded w-1/4" />
-                                            <div className="h-3 bg-slate-100 rounded w-3/4" />
-                                        </div>
+                            <div className="grid grid-cols-2 gap-3 mb-5">
+                                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <TrendingUp size={16} className="text-slate-400" />
+                                        <span className="text-xs text-slate-500 font-medium">Total Revenue</span>
                                     </div>
-                                ))
-                            ) : activities.length > 0 ? (
-                                activities.map((activity, index) => (
-                                    <ActivityItem
-                                        key={index}
-                                        icon={activity.type === 'ride' ? <Navigation size={18} className="text-green-500" /> : <AlertTriangle size={18} className="text-rose-500" />}
-                                        title={activity.title}
-                                        details={activity.description}
-                                        time={activity.time}
-                                    />
-                                ))
-                            ) : (
-                                <div className="text-center py-10 text-slate-400 font-medium">No recent activity</div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right Side: Quick Actions & Alerts */}
-                    <div className="col-span-4 space-y-8">
-                        {/* Quick Actions */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-                            <h3 className="text-lg font-bold mb-6">Quick Actions</h3>
-                            <div className="space-y-4">
-                                <button
-                                    onClick={() => navigate('/add-vehicle')}
-                                    className="w-full bg-orange-600 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-700 transition-all shadow-lg shadow-orange-100"
-                                >
-                                    <Plus size={18} />
-                                    Add Vehicle
-                                </button>
-                                <button className="w-full border-2 border-orange-600 text-orange-600 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-50 transition-all">
-                                    <MapPin size={18} />
-                                    View Live Map
-                                </button>
-                                <button
-                                    onClick={() => navigate('/maintenance/new')}
-                                    className="w-full border-2 border-orange-600 text-orange-600 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-50 transition-all"
-                                >
-                                    <Wrench size={18} />
-                                    Raise Maintenance
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Recent Alerts */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-bold">Recent Alerts</h3>
-                                <button className="text-orange-600 text-xs font-bold hover:underline">View All</button>
+                                    {loading ? (
+                                        <div className="h-6 w-20 bg-slate-200 animate-pulse rounded" />
+                                    ) : (
+                                        <div className="text-lg font-bold text-slate-800">{formatCurrency(data?.revenue.total ?? 0)}</div>
+                                    )}
+                                </div>
+                                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <IndianRupee size={16} className="text-slate-400" />
+                                        <span className="text-xs text-slate-500 font-medium">Today's Revenue</span>
+                                    </div>
+                                    {loading ? (
+                                        <div className="h-6 w-20 bg-slate-200 animate-pulse rounded" />
+                                    ) : (
+                                        <div className="text-lg font-bold text-slate-800">{formatCurrency(data?.revenue.today ?? 0)}</div>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="space-y-4">
-                                {loading ? (
-                                    [...Array(3)].map((_, i) => (
-                                        <div key={i} className="h-20 bg-slate-50 border border-slate-100 rounded-2xl animate-pulse" />
+                            <div className="space-y-2 pt-4 border-t border-slate-50">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500 font-medium">Today's Bookings</span>
+                                    <span className="font-bold text-slate-800">{loading ? "—" : data?.bookings.today ?? 0}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500 font-medium">Total Bookings</span>
+                                    <span className="font-bold text-slate-800">{loading ? "—" : data?.bookings.total ?? 0}</span>
+                                </div>
+                                {data?.bookings.byStatus && Object.keys(data.bookings.byStatus).length > 0 && (
+                                    Object.entries(data.bookings.byStatus).map(([status, count]) => (
+                                        <div key={status} className="flex justify-between text-xs text-slate-400">
+                                            <span className="capitalize">{status.toLowerCase().replace(/_/g, " ")}</span>
+                                            <span className="font-semibold text-slate-600">{count}</span>
+                                        </div>
                                     ))
-                                ) : alerts.length > 0 ? (
-                                    alerts.map((alert, index) => (
-                                        <AlertItem
-                                            key={index}
-                                            title={alert.title}
-                                            details={alert.description}
-                                            time={alert.time}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="text-center py-6 text-slate-300 font-medium text-xs border-2 border-dashed border-slate-50 rounded-2xl">No active alerts</div>
                                 )}
                             </div>
                         </div>
                     </div>
+
+                    {/* User Breakdown */}
+                    <div className="col-span-12 lg:col-span-7">
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 h-full">
+                            <h3 className="text-base font-bold text-slate-800 mb-5">User Breakdown</h3>
+
+                            {/* Status overview */}
+                            <div className="grid grid-cols-3 gap-3 mb-5">
+                                {[
+                                    { label: "Total", value: data?.users.total ?? 0, icon: <ShieldCheck size={18} className="text-slate-500" /> },
+                                    { label: "Active", value: data?.users.active ?? 0, icon: <UserCheck size={18} className="text-slate-500" /> },
+                                    { label: "Blocked", value: data?.users.blocked ?? 0, icon: <UserX size={18} className="text-slate-500" /> },
+                                ].map((item) => (
+                                    <div key={item.label} className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                                        <div className="flex justify-center mb-1">{item.icon}</div>
+                                        {loading ? (
+                                            <div className="h-7 w-10 bg-slate-200 animate-pulse rounded mx-auto my-1" />
+                                        ) : (
+                                            <div className="text-2xl font-bold text-slate-800">{item.value}</div>
+                                        )}
+                                        <div className="text-xs text-slate-400 mt-0.5">{item.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Role breakdown */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">By Role</h4>
+                                <div className="space-y-3">
+                                    {loading ? (
+                                        [...Array(4)].map((_, i) => (
+                                            <div key={i} className="h-8 bg-slate-50 animate-pulse rounded-xl" />
+                                        ))
+                                    ) : (
+                                        Object.entries(data?.users.byRole ?? {}).map(([role, count]) => {
+                                            const total = data?.users.total || 1
+                                            const pct = Math.round((count / total) * 100)
+                                            return (
+                                                <div key={role} className="flex items-center gap-3">
+                                                    <div className="w-32 text-xs text-slate-600 font-medium shrink-0">
+                                                        {roleLabelMap[role] ?? role}
+                                                    </div>
+                                                    <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                        <div
+                                                            className={`${roleColorMap[role] ?? "bg-slate-400"} h-full rounded-full transition-all duration-700`}
+                                                            style={{ width: `${pct}%` }}
+                                                        />
+                                                    </div>
+                                                    <div className="text-xs font-bold text-slate-700 shrink-0 w-6 text-right">{count}</div>
+                                                    <div className="text-xs text-slate-400 shrink-0 w-8">{pct}%</div>
+                                                </div>
+                                            )
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Required Cards */}
+                <div>
+                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Action Required</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {actionCards.map((card) => (
+                            <button
+                                key={card.label}
+                                onClick={() => navigate(card.route)}
+                                className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 text-left hover:shadow-md hover:border-slate-200 transition-all group"
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 group-hover:bg-orange-50 group-hover:border-orange-100 transition-colors">
+                                        {card.icon}
+                                    </div>
+                                    <ChevronRight size={16} className="text-slate-300 group-hover:text-orange-400 transition-colors" />
+                                </div>
+                                {loading ? (
+                                    <div className="h-8 w-12 bg-slate-100 animate-pulse rounded-lg mb-1" />
+                                ) : (
+                                    <div className="text-3xl font-bold text-slate-800">{card.value}</div>
+                                )}
+                                <div className="text-sm font-semibold text-slate-700 mt-0.5">{card.label}</div>
+                                <div className="text-xs text-slate-400 mt-1">{card.sub}</div>
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
         </MainLayout>
-    )
-}
-
-
-function ActivityItem({ icon, title, details, time }: { icon: ReactNode, title: string, details: string, time: string }) {
-    return (
-        <div className="flex items-start gap-4 pb-6 border-b border-slate-50 last:border-0 last:pb-0">
-            <div className="bg-slate-50 p-2.5 rounded-xl">
-                {icon}
-            </div>
-            <div className="flex-1">
-                <div className="flex justify-between items-start">
-                    <h4 className="font-bold text-sm">{title}</h4>
-                    <span className="text-[10px] text-slate-400 font-medium">{time}</span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">{details}</p>
-            </div>
-        </div>
-    )
-}
-
-function AlertItem({ title, details, time }: { title: string, details: string, time: string }) {
-    return (
-        <div className="p-4 border border-orange-200 bg-orange-50/30 rounded-2xl relative overflow-hidden group hover:border-orange-300 transition-colors">
-            <div className="flex items-start gap-3 relative z-10">
-                <AlertTriangle className="text-orange-500 shrink-0" size={18} />
-                <div>
-                    <h4 className="font-bold text-xs text-slate-800">{title}</h4>
-                    <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{details}</p>
-                    <p className="text-[10px] text-slate-400 mt-1 font-medium">{time}</p>
-                </div>
-            </div>
-        </div>
     )
 }

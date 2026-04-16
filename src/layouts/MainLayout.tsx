@@ -12,6 +12,7 @@ import {
     LogOut,
     Zap,
     MapPin,
+    ClipboardCheck,
     ChevronDown
 } from "lucide-react"
 import { useState, ReactNode, useEffect, useCallback } from "react"
@@ -90,7 +91,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const fetchAdminProfile = useCallback(async () => {
         try {
             const meRes = await adminApi.getAdminDetails()
-            const me = (meRes as any)?.data ?? meRes
+            const container = (meRes as any)?.data ?? meRes
+            const me =
+                (container as any)?.admin ||
+                (container as any)?.user ||
+                (container as any)?.profile ||
+                (container as any)?.me ||
+                container
             const name = me?.name || me?.fullName || "Admin"
             const role = parseRoleLabel(me?.role || me?.adminType || "")
             setAdminProfile({ name, role })
@@ -128,6 +135,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         { name: "Add Station", path: "/admin/stations/add", icon: <MapPin size={20} strokeWidth={2.5} /> },
         { name: "User Management", path: "/admin/users", icon: <Headset size={20} strokeWidth={2.5} /> },
         { name: "Owner Management", path: "/admin/owners", icon: <UserCog size={20} strokeWidth={2.5} /> },
+        { name: "Approvals", path: "/admin/approvals", icon: <ClipboardCheck size={20} strokeWidth={2.5} /> },
         { name: "Fleet Management", path: "/fleet", icon: <Bike size={20} strokeWidth={2.5} /> },
         { name: "Ride Monitoring", path: "/ride-monitoring", icon: <Navigation size={20} strokeWidth={2.5} /> },
         { name: "Booking Control", path: "/booking", icon: <Calendar size={20} strokeWidth={2.5} /> },

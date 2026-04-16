@@ -24,6 +24,7 @@ const UserManagement = lazy(() => import("./pages/admin/UserManagement"))
 const OwnerManagement = lazy(() => import("./pages/admin/OwnerManagement"))
 const UserDetail = lazy(() => import("./pages/admin/UserDetail"))
 const Finance = lazy(() => import("./pages/admin/Finance"))
+const Approvals = lazy(() => import("./pages/admin/Approvals"))
 
 // Loading component
 const PageLoader = () => (
@@ -68,6 +69,7 @@ function App() {
           <Route path="/admin/users/:userId" element={<UserDetail />} />
           <Route path="/admin/owners/:userId" element={<UserDetail />} />
           <Route path="/admin/finance" element={<Finance />} />
+          <Route path="/admin/approvals" element={<Approvals />} />
         </Routes>
       </Suspense>
     </Router>
