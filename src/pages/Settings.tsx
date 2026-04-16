@@ -89,7 +89,13 @@ export default function Settings() {
             setProfileLoading(true)
             try {
                 const meRes = await adminApi.getAdminDetails() as any
-                const me = meRes?.data ?? meRes
+                const container = meRes?.data ?? meRes
+                const me =
+                    container?.admin ||
+                    container?.user ||
+                    container?.profile ||
+                    container?.me ||
+                    container
                 setProfile({
                     id: me?._id || me?.id || "",
                     name: me?.name || me?.fullName || "",
