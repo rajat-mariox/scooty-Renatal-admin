@@ -1,8 +1,23 @@
-import { Search, Plus, RefreshCw } from "lucide-react"
+import { Search, RefreshCw } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import MainLayout from "../layouts/MainLayout"
 import { adminApi } from "../services/adminApi"
+
+function normalizeMaintenanceStatusForUi(status?: string) {
+    const raw = String(status || "").trim()
+    if (!raw) return "Pending"
+
+    const upper = raw.toUpperCase().replace(/\s+/g, "_")
+    if (upper === "PENDING") return "Pending"
+    if (upper === "IN_PROGRESS") return "In Progress"
+    if (upper === "COMPLETED") return "Completed"
+
+    const words = upper.split(/[_-]+/g).filter(Boolean)
+    return words
+        .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+        .join(" ")
+}
 
 export default function MaintenanceHistory() {
     const navigate = useNavigate()
@@ -22,7 +37,7 @@ export default function MaintenanceHistory() {
                 vehicleId: log.vehicleId || log.vehicle?.id || "N/A",
                 issueType: log.issueType || "General Maintenance",
                 description: log.description || "No description provided",
-                status: log.status || "Pending",
+                status: normalizeMaintenanceStatusForUi(log.status),
                 cost: log.cost ? `₹${log.cost}` : "-",
                 date: log.date || log.createdAt ? new Date(log.date || log.createdAt).toISOString().split('T')[0] : "N/A"
             }))
@@ -61,13 +76,7 @@ export default function MaintenanceHistory() {
                         </div>
                         {loading && <RefreshCw className="animate-spin text-orange-500 mb-1" size={18} />}
                     </div>
-                    <button
-                        onClick={() => navigate("/maintenance/new")}
-                        className="px-6 py-2.5 bg-[#FF6A1F] text-white font-bold rounded-xl hover:bg-orange-600 transition-all text-sm flex items-center gap-2"
-                    >
-                        <Plus size={18} strokeWidth={3} />
-                        Add Maintenance
-                    </button>
+                    <div />
                 </div>
 
                 {/* Search Input Card */}
@@ -80,7 +89,7 @@ export default function MaintenanceHistory() {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search by Log ID, Vehicle ID, or Issue Type..."
+                            placeholder="Search by Vehicle ID or Issue Type..."
                             className="w-full pl-14 pr-6 py-3.5 bg-white text-[14px] focus:outline-none font-medium text-slate-700 placeholder:text-slate-300 placeholder:font-normal"
                         />
                     </div>
@@ -100,7 +109,6 @@ export default function MaintenanceHistory() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-50">
-                                    <th className="px-6 py-6 text-[13px] font-semibold text-slate-400">Log ID</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-400">Vehicle ID</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-400">Issue Type</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-400">Description</th>
@@ -113,9 +121,6 @@ export default function MaintenanceHistory() {
                             <tbody className="divide-y divide-slate-50">
                                 {filteredLogs.length > 0 ? filteredLogs.map((log) => (
                                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-5">
-                                            <span className="text-[14px] font-bold text-slate-800">{log.id}</span>
-                                        </td>
                                         <td className="px-6 py-5">
                                             <span className="text-[14px] text-slate-600 font-medium">{log.vehicleId}</span>
                                         </td>
@@ -151,7 +156,7 @@ export default function MaintenanceHistory() {
                                     </tr>
                                 )) : !loading && (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-xl">
+                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-xl">
                                             No maintenance logs found matching your criteria
                                         </td>
                                     </tr>
