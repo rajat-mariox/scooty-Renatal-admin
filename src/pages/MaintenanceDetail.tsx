@@ -9,6 +9,30 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import { adminApi } from "../services/adminApi"
 
+function normalizeMaintenanceStatusForUi(status?: string) {
+    const raw = String(status || "").trim()
+    if (!raw) return "Pending"
+
+    const upper = raw.toUpperCase().replace(/\s+/g, "_")
+    if (upper === "PENDING") return "Pending"
+    if (upper === "IN_PROGRESS") return "In Progress"
+    if (upper === "COMPLETED") return "Completed"
+
+    // Fallback: title-case unknown statuses like "ON_HOLD" -> "On Hold"
+    const words = upper.split(/[_-]+/g).filter(Boolean)
+    return words
+        .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+        .join(" ")
+}
+
+function normalizeMaintenanceStatusForApi(status: string) {
+    const normalized = String(status || "").trim().toUpperCase().replace(/\s+/g, "_")
+    if (normalized === "IN_PROGRESS") return "in_progress"
+    if (normalized === "COMPLETED") return "completed"
+    if (normalized === "PENDING") return "pending"
+    return normalized.toLowerCase()
+}
+
 export default function MaintenanceDetail() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
@@ -44,7 +68,7 @@ export default function MaintenanceDetail() {
                         description: logData.description || "No description provided."
                     }
                     setCurrentData(formattedData)
-                    setCurrentStatus(logData.status || "Pending")
+                    setCurrentStatus(normalizeMaintenanceStatusForUi(logData.status))
                     setError(null)
                 } else {
                     setError("Maintenance log not found")
@@ -64,9 +88,9 @@ export default function MaintenanceDetail() {
         setActionLoading(true)
         try {
             await adminApi.updateMaintenanceStatus(id!, {
-                status: newStatus
+                status: normalizeMaintenanceStatusForApi(newStatus)
             })
-            setCurrentStatus(newStatus)
+            setCurrentStatus(normalizeMaintenanceStatusForUi(newStatus))
         } catch (err: any) {
             console.error("Failed to update status:", err)
         } finally {
@@ -119,7 +143,7 @@ export default function MaintenanceDetail() {
                             Back to Maintenance Logs
                         </button>
                         <div className="space-y-1">
-                            <h2 className="text-[20px] font-bold text-slate-800">Maintenance Details - {currentData.id}</h2>
+                            <h2 className="text-[20px] font-bold text-slate-800">Maintenance Details</h2>
                             <p className="text-slate-400 font-medium text-[14px]">Vehicle: {currentData.vehicleId}</p>
                         </div>
                     </div>
@@ -145,7 +169,6 @@ export default function MaintenanceDetail() {
                         </div>
 
                         <div className="space-y-6">
-                            <InfoItem label="Log ID" value={currentData.id} />
                             <InfoItem label="Vehicle ID" value={currentData.vehicleId} />
                             <InfoItem label="Issue Type" value={currentData.issueType} />
                             <InfoItem label="Date" value={currentData.date} />
