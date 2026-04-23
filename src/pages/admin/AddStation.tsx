@@ -19,6 +19,23 @@ type NominatimSuggestion = {
     display_name: string
     lat: string
     lon: string
+    address?: NominatimAddress
+}
+
+type NominatimAddress = {
+    city?: string
+    town?: string
+    village?: string
+    municipality?: string
+    county?: string
+    state?: string
+    state_district?: string
+    country_code?: string
+}
+
+type NominatimReverseResponse = {
+    display_name?: string
+    address?: NominatimAddress
 }
 
 const INDIA_BOUNDS: [[number, number], [number, number]] = [
@@ -28,6 +45,19 @@ const INDIA_BOUNDS: [[number, number], [number, number]] = [
 
 function isWithinIndiaBounds(lat: number, lng: number) {
     return lat >= INDIA_BOUNDS[0][0] && lat <= INDIA_BOUNDS[1][0] && lng >= INDIA_BOUNDS[0][1] && lng <= INDIA_BOUNDS[1][1]
+}
+
+function resolveCityState(address?: NominatimAddress | null) {
+    const city = String(
+        address?.city ||
+        address?.town ||
+        address?.village ||
+        address?.municipality ||
+        address?.county ||
+        ""
+    ).trim()
+    const state = String(address?.state || address?.state_district || "").trim()
+    return { city, state }
 }
 
 type AddressAutocompleteProps = {
@@ -184,6 +214,8 @@ export default function AddStation() {
     const [form, setForm] = useState({
         name: "",
         address: "",
+        city: "",
+        state: "",
         parkingType: "OPEN",
         lat: "",
         lng: "",
@@ -228,13 +260,16 @@ export default function AddStation() {
         try {
             const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}&zoom=18&addressdetails=1`
             const res = await fetch(url, { headers: { Accept: "application/json" } })
-            if (!res.ok) return ""
-            const data = await res.json()
+            if (!res.ok) return null
+            const data = (await res.json()) as NominatimReverseResponse
             const countryCode = String(data?.address?.country_code || "").toLowerCase()
-            if (countryCode !== "in") return ""
-            return String(data?.display_name || "")
+            if (countryCode !== "in") return null
+            return {
+                displayName: String(data?.display_name || ""),
+                address: data?.address || null
+            }
         } catch {
-            return ""
+            return null
         }
     }
 
@@ -251,11 +286,14 @@ export default function AddStation() {
             lng: lng.toFixed(6)
         }))
 
-        const resolvedAddress = await reverseGeocodeIndia(lat, lng)
-        if (resolvedAddress) {
+        const resolved = await reverseGeocodeIndia(lat, lng)
+        if (resolved?.displayName) {
+            const derived = resolveCityState(resolved.address)
             setForm((prev) => ({
                 ...prev,
-                address: resolvedAddress
+                address: resolved.displayName,
+                city: derived.city || prev.city,
+                state: derived.state || prev.state,
             }))
         }
     }
@@ -271,6 +309,14 @@ export default function AddStation() {
         }
         if (!form.address.trim()) {
             setError("Address is required")
+            return
+        }
+        if (!form.city.trim()) {
+            setError("City is required")
+            return
+        }
+        if (!form.state.trim()) {
+            setError("State is required")
             return
         }
         if (!hasCoordinates) {
@@ -289,6 +335,8 @@ export default function AddStation() {
             const payload = {
                 name: form.name.trim(),
                 address: form.address.trim(),
+                city: form.city.trim(),
+                state: form.state.trim(),
                 parkingType: form.parkingType,
                 lat: Number(form.lat),
                 lng: Number(form.lng),
@@ -305,7 +353,7 @@ export default function AddStation() {
             const res = await adminApi.addStation(payload) as any
             if (res?.code === 1 || res?.success) {
                 setSuccess(res?.message || "Station added successfully")
-                setForm({ name: "", address: "", parkingType: "OPEN", lat: "", lng: "", stationAdminId: "", isActive: true })
+                setForm({ name: "", address: "", city: "", state: "", parkingType: "OPEN", lat: "", lng: "", stationAdminId: "", isActive: true })
             } else {
                 setError(res?.message || "Failed to add station")
             }
@@ -370,19 +418,51 @@ export default function AddStation() {
                             <AddressAutocompleteInput
                                 value={form.address}
                                 disabled={loading}
-                                onChange={(next) => setForm((prev) => ({ ...prev, address: next, lat: "", lng: "" }))}
+                                onChange={(next) => setForm((prev) => ({ ...prev, address: next, lat: "", lng: "", city: "", state: "" }))}
                                 onSelect={(suggestion) => {
                                     const lat = Number(suggestion.lat)
                                     const lng = Number(suggestion.lon)
                                     if (!isWithinIndiaBounds(lat, lng)) return
+                                    const derived = resolveCityState(suggestion.address)
                                     setForm((prev) => ({
                                         ...prev,
                                         address: suggestion.display_name,
+                                        city: derived.city || prev.city,
+                                        state: derived.state || prev.state,
                                         lat: String(lat),
                                         lng: String(lng)
                                     }))
                                 }}
                             />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">City</label>
+                                <div className="relative">
+                                    <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        value={form.city}
+                                        onChange={(e) => setForm({ ...form, city: e.target.value })}
+                                        placeholder="Auto-filled or enter city"
+                                        className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-sm font-medium outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">State</label>
+                                <div className="relative">
+                                    <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        value={form.state}
+                                        onChange={(e) => setForm({ ...form, state: e.target.value })}
+                                        placeholder="Auto-filled or enter state"
+                                        className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-sm font-medium outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
