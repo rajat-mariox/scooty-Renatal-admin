@@ -42,18 +42,34 @@ export default function Reports() {
             setLoading(true)
             try {
                 const response = await adminApi.getReports()
-                const data = (response as any).data || response
-                
-                setRevenueData(data.revenueData || [])
-                setRideData(data.rideData || [])
+                const payload = (response as any)?.data ?? response
+                const report = payload?.data?.report ?? payload?.report
+                const summary = report?.summary ?? {}
+
+                const mappedRevenueData = Array.isArray(report?.dailyRevenue)
+                    ? report.dailyRevenue.map((r: any) => ({
+                          name: String(r?.date ?? ""),
+                          value: Number(r?.revenue ?? 0),
+                      }))
+                    : []
+
+                const mappedRideData = Array.isArray(report?.dailyBookings)
+                    ? report.dailyBookings.map((r: any) => ({
+                          name: String(r?.date ?? ""),
+                          value: Number(r?.total ?? 0),
+                      }))
+                    : []
+
+                setRevenueData(mappedRevenueData)
+                setRideData(mappedRideData)
                 setStats({
-                    totalRevenue: data.summary?.totalRevenue || 0,
-                    revenueTrend: data.summary?.revenueTrend || 0,
-                    totalRides: data.summary?.totalRides || 0,
-                    ridesTrend: data.summary?.ridesTrend || 0,
-                    avgDuration: data.summary?.avgDuration || 0,
-                    complaints: data.summary?.complaints || 0,
-                    complaintsTrend: data.summary?.complaintsTrend || 0
+                    totalRevenue: Number(summary?.totalRevenue ?? 0),
+                    revenueTrend: 0,
+                    totalRides: Number(summary?.totalBookings ?? 0),
+                    ridesTrend: 0,
+                    avgDuration: 0,
+                    complaints: 0,
+                    complaintsTrend: 0,
                 })
             } catch (error) {
                 console.error("Failed to fetch reports:", error)
