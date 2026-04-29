@@ -2,6 +2,7 @@ import { Eye, EyeOff, Bike, ArrowLeft, KeyRound, CheckCircle } from "lucide-reac
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { adminApi } from "../services/adminApi"
+import PrimaryButton from "../components/PrimaryButton"
 
 type LoginStep = 'LOGIN' | 'FORGOT_EMAIL' | 'FORGOT_RESET'
 
@@ -223,13 +224,13 @@ export default function Login() {
                             </div>
                         </div>
 
-                        <button
+                        <PrimaryButton
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                            className="w-full py-4"
                         >
                             {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Login to Dashboard"}
-                        </button>
+                        </PrimaryButton>
                     </form>
                 )}
 

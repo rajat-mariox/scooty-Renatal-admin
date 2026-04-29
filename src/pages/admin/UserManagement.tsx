@@ -1,5 +1,6 @@
-import { RefreshCw, Search, User } from "lucide-react"
+import { Eye, RefreshCw, Search, User } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import MainLayout from "../../layouts/MainLayout"
 import { adminApi } from "../../services/adminApi"
 import Pagination from "../../components/admin/Pagination"
@@ -14,6 +15,20 @@ type UserRecord = {
     profilePhotoUrl?: string
     createdAt?: string
     isActive?: boolean
+    kycStatus?: string
+    kyc_status?: string
+    kycRejectionReason?: string
+    kyc_rejection_reason?: string
+}
+
+const normalizeKycStatus = (user: UserRecord) =>
+    String(user?.kycStatus || user?.kyc_status || "").toUpperCase()
+
+const getKycLabel = (status: string) => {
+    if (status === "APPROVED") return "Approved"
+    if (status === "REJECTED") return "Rejected"
+    if (status === "PENDING") return "Pending"
+    return "Not Submitted"
 }
 
 const STATUS_FILTERS = [
@@ -28,6 +43,7 @@ const normalizeUsers = (payload: any) => {
 }
 
 export default function UserManagement() {
+    const navigate = useNavigate()
     const [users, setUsers] = useState<UserRecord[]>([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
@@ -211,6 +227,7 @@ export default function UserManagement() {
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400">Phone</th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400">Joined Date</th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400">Status</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400">KYC</th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -218,6 +235,8 @@ export default function UserManagement() {
                                 {users.length > 0 ? (
                                     users.map((user) => {
                                         const userId = user.id || user._id
+                                        const kycStatus = normalizeKycStatus(user)
+                                        const rejectionReason = String(user?.kycRejectionReason || user?.kyc_rejection_reason || "").trim()
                                         return (
                                             <tr key={userId} className="group transition-colors hover:bg-slate-50/60">
                                                 <td className="px-6 py-5">
@@ -255,25 +274,47 @@ export default function UserManagement() {
                                                         {user.isActive ? "Active" : "Inactive"}
                                                     </span>
                                                 </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="space-y-1">
+                                                        <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold ${kycStatus === "APPROVED" ? "bg-green-50 text-green-600" : kycStatus === "REJECTED" ? "bg-rose-50 text-rose-600" : kycStatus === "PENDING" ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-600"}`}>
+                                                            {getKycLabel(kycStatus)}
+                                                        </span>
+                                                        {kycStatus === "REJECTED" && rejectionReason && (
+                                                            <p className="text-[11px] font-medium text-rose-600">
+                                                                Reason: {rejectionReason}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </td>
                                                 <td className="px-6 py-5 text-right">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateUserStatus(user)}
-                                                        className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                                                            user.isActive
-                                                                ? "bg-rose-600 text-white hover:bg-rose-700"
-                                                                : "bg-green-600 text-white hover:bg-green-700"
-                                                        }`}
-                                                    >
-                                                        {user.isActive ? "Deactivate" : "Activate"}
-                                                    </button>
+                                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => navigate(`/admin/users/${userId}`)}
+                                                            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600 transition-colors hover:border-orange-200 hover:bg-orange-50"
+                                                            title="View details"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateUserStatus(user)}
+                                                            className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                                                                user.isActive
+                                                                    ? "bg-rose-600 text-white hover:bg-rose-700"
+                                                                    : "bg-green-600 text-white hover:bg-green-700"
+                                                            }`}
+                                                        >
+                                                            {user.isActive ? "Deactivate" : "Activate"}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         )
                                     })
                                 ) : !loading ? (
                                     <tr>
-                                        <td colSpan={5} className="py-20 text-center text-slate-400 font-medium">
+                                        <td colSpan={6} className="py-20 text-center text-slate-400 font-medium">
                                             No users found
                                         </td>
                                     </tr>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
+import PrimaryButton from "../components/PrimaryButton";
 import { adminApi } from "../services/adminApi";
 import {
   ArrowLeft,
@@ -198,14 +199,14 @@ export default function AddVehicle() {
               >
                 Cancel
               </button>
-              <button
+              <PrimaryButton
                 type="submit"
                 disabled={isSubmitting}
-                className="px-8 py-3 bg-[#FF6A1F] text-white text-sm font-bold rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-600 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-70 disabled:hover:translate-y-0"
+                className="px-8 py-3 text-sm hover:-translate-y-0.5 disabled:hover:translate-y-0"
               >
                 {isSubmitting ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
                 Save Vehicle
-              </button>
+              </PrimaryButton>
             </div>
           </form>
         </div>

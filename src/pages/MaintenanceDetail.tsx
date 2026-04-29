@@ -7,6 +7,7 @@ import {
 import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
+import PrimaryButton from "../components/PrimaryButton"
 import { adminApi } from "../services/adminApi"
 
 function normalizeMaintenanceStatusForUi(status?: string) {
@@ -202,14 +203,14 @@ export default function MaintenanceDetail() {
                                         >
                                             {currentStatus === 'Pending' ? 'Mark In Progress' : 'Mark Pending'}
                                         </button>
-                                        <button 
+                                        <PrimaryButton
                                             onClick={() => handleUpdateStatus('Completed')}
                                             disabled={actionLoading}
-                                            className="w-full flex justify-center items-center gap-2 py-3.5 bg-[#FF6A1F] text-white font-bold text-[14px] rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 disabled:opacity-70"
+                                            className="w-full py-3.5 text-[14px]"
                                         >
                                             {actionLoading && <RefreshCw size={16} className="animate-spin" />}
                                             Mark as Completed
-                                        </button>
+                                        </PrimaryButton>
                                     </>
                                 )}
                             </div>

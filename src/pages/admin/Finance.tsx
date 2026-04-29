@@ -1,6 +1,7 @@
 import { Search, RefreshCw, DollarSign, Wallet, ArrowUpRight, ArrowDownLeft, FileText, Settings, BadgePercent, Coins } from "lucide-react"
 import { useState, useEffect } from "react"
 import MainLayout from "../../layouts/MainLayout"
+import PrimaryButton from "../../components/PrimaryButton"
 import { adminApi } from "../../services/adminApi"
 
 type FinanceTab = 'pricing' | 'commission' | 'settlements' | 'ledger' | 'transactions'
@@ -230,10 +231,10 @@ function CommissionView({ data }: { data: any }) {
                     </div>
                     <div className="text-3xl font-black text-blue-600">{franchiseSharePercent}%</div>
                 </div>
-                <button className="w-full py-4 bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-2">
+                <PrimaryButton className="w-full py-4">
                     <Settings size={18} />
                     Update Commissions
-                </button>
+                </PrimaryButton>
             </div>
         </div>
     )
