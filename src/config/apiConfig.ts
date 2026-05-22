@@ -83,6 +83,7 @@ export const API_ENDPOINTS = {
     STATIONS: {
       GET_ALL: '/admin/stations',
       ADD: '/admin/stations',
+      UPDATE: (id: string) => `/admin/stations/${id}`,
     },
 
     RIDE_PLANS: {

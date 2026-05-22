@@ -132,6 +132,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const sidebarItems = [
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} strokeWidth={2.5} /> },
         { name: "Station Admins", path: "/admin/station-admins", icon: <Settings size={20} strokeWidth={2.5} /> },
+        { name: "Stations", path: "/admin/stations", icon: <MapPin size={20} strokeWidth={2.5} /> },
         { name: "Add Station", path: "/admin/stations/add", icon: <MapPin size={20} strokeWidth={2.5} /> },
         { name: "User Management", path: "/admin/users", icon: <Headset size={20} strokeWidth={2.5} /> },
         { name: "Owner Management", path: "/admin/owners", icon: <UserCog size={20} strokeWidth={2.5} /> },

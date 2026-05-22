@@ -217,6 +217,7 @@ export default function AddStation() {
         city: "",
         state: "",
         parkingType: "OPEN",
+        maxVehicles: "",
         lat: "",
         lng: "",
         stationAdminId: "",
@@ -327,6 +328,11 @@ export default function AddStation() {
             setError("Please select an address within India.")
             return
         }
+        const maxVehiclesNumber = Number(form.maxVehicles)
+        if (!form.maxVehicles.trim() || !Number.isInteger(maxVehiclesNumber) || maxVehiclesNumber < 1) {
+            setError("Max number of scooty for this station is required and must be a positive whole number.")
+            return
+        }
 
         setLoading(true)
         try {
@@ -338,6 +344,7 @@ export default function AddStation() {
                 city: form.city.trim(),
                 state: form.state.trim(),
                 parkingType: form.parkingType,
+                maxVehicles: maxVehiclesNumber,
                 lat: Number(form.lat),
                 lng: Number(form.lng),
                 ...(stationAdminIdRaw ? {
@@ -353,7 +360,7 @@ export default function AddStation() {
             const res = await adminApi.addStation(payload) as any
             if (res?.code === 1 || res?.success) {
                 setSuccess(res?.message || "Station added successfully")
-                setForm({ name: "", address: "", city: "", state: "", parkingType: "OPEN", lat: "", lng: "", stationAdminId: "", isActive: true })
+                setForm({ name: "", address: "", city: "", state: "", parkingType: "OPEN", maxVehicles: "", lat: "", lng: "", stationAdminId: "", isActive: true })
             } else {
                 setError(res?.message || "Failed to add station")
             }
@@ -465,7 +472,7 @@ export default function AddStation() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
                             <div>
                                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">Parking Type</label>
                                 <select
@@ -476,6 +483,27 @@ export default function AddStation() {
                                     <option value="OPEN">OPEN</option>
                                     <option value="COVERED">COVERED</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                                    Max Scooty <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={1}
+                                    step={1}
+                                    value={form.maxVehicles}
+                                    onChange={(e) => {
+                                        const next = e.target.value.replace(/[^0-9]/g, "")
+                                        setForm({ ...form, maxVehicles: next })
+                                    }}
+                                    placeholder="e.g. 20"
+                                    className="w-full rounded-xl border border-slate-200 py-3 px-4 text-sm font-medium outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+                                />
+                                <p className="mt-1 text-[11px] font-medium text-slate-400">
+                                    Owners won't be able to add more scooty than this number at the station.
+                                </p>
                             </div>
                             <div>
                                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">Assign Station Admin</label>

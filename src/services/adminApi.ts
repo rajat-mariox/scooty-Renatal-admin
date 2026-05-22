@@ -69,6 +69,11 @@ export const adminApi = {
     return response.data;
   },
 
+  updateStation: async (id: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.STATIONS.UPDATE(id), data);
+    return response.data;
+  },
+
   // This endpoint is not exposed in admin routes; keep compatibility by deriving from list.
   getStationDetails: async (id: string) => {
     const response = await axiosInstance.get(ENDPOINTS.STATIONS.GET_ALL);

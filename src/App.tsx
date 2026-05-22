@@ -20,6 +20,7 @@ const Settings = lazy(() => import("./pages/Settings"))
 const AddVehicle = lazy(() => import("./pages/AddVehicle"))
 const StationAdmins = lazy(() => import("./pages/admin/StationAdmins"))
 const AddStation = lazy(() => import("./pages/admin/AddStation"))
+const Stations = lazy(() => import("./pages/admin/Stations"))
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"))
 const OwnerManagement = lazy(() => import("./pages/admin/OwnerManagement"))
 const UserDetail = lazy(() => import("./pages/admin/UserDetail"))
@@ -64,6 +65,7 @@ function App() {
           {/* Admin Specific Routes */}
           <Route path="/admin/station-admins" element={<StationAdmins />} />
           <Route path="/admin/stations/add" element={<AddStation />} />
+          <Route path="/admin/stations" element={<Stations />} />
           <Route path="/admin/users" element={<UserManagement />} />
           <Route path="/admin/owners" element={<OwnerManagement />} />
           <Route path="/admin/users/:userId" element={<UserDetail />} />
