@@ -13,7 +13,9 @@ import {
     Zap,
     MapPin,
     ClipboardCheck,
-    ChevronDown
+    ChevronDown,
+    ShieldCheck,
+    ScrollText
 } from "lucide-react"
 import { useState, ReactNode, useEffect, useCallback } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
@@ -143,6 +145,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
         { name: "Maintenance", path: "/maintenance", icon: <Wrench size={20} strokeWidth={2.5} /> },
         { name: "Finance & Ledger", path: "/admin/finance", icon: <Zap size={20} strokeWidth={2.5} /> },
         { name: "Tickets", path: "/support", icon: <Headset size={20} strokeWidth={2.5} /> },
+        { name: "Access Control", path: "/admin/access-control", icon: <ShieldCheck size={20} strokeWidth={2.5} /> },
+        { name: "Audit Logs", path: "/admin/audit-logs", icon: <ScrollText size={20} strokeWidth={2.5} /> },
         { name: "Reports", path: "/reports", icon: <BarChart3 size={20} strokeWidth={2.5} /> },
         { name: "Notifications", path: "/notifications", icon: <Bell size={20} strokeWidth={2.5} />, badge: unreadCount > 0 ? unreadCount : undefined },
         { name: "Settings", path: "/settings", icon: <Settings size={20} strokeWidth={2.5} /> },

@@ -36,20 +36,21 @@ export default function ComplaintDetail() {
             setLoading(true)
             try {
                 const response = await adminApi.getTicketDetail(id)
-                const data = (response as any).data || response
+                const payload = (response as any).data || response
+                const data = payload?.ticket ?? payload
 
                 const formattedData = {
-                    id: data.ticketId || data.id || id,
-                    date: data.date || data.createdAt ? new Date(data.date || data.createdAt).toISOString().split('T')[0] : "N/A",
-                    userName: data.userName || data.user?.name || "Unknown User",
-                    phone: data.phone || data.user?.phone || "N/A",
-                    relatedRide: data.rideId || data.ride?.id || "N/A",
-                    issueType: data.issue || data.subject || "General Support",
-                    description: data.description || "No description provided."
+                    id: data._id || data.ticketId || data.id || id,
+                    date: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : "N/A",
+                    userName: data.userId?.name || data.user?.name || data.userName || "Unknown User",
+                    phone: data.userId?.mobile || data.user?.mobile || data.phone || "N/A",
+                    relatedRide: data.bookingId || data.rideId || "N/A",
+                    issueType: data.subject || data.issue || "General Support",
+                    description: data.message || data.description || "No description provided."
                 }
 
                 setComplaintData(formattedData)
-                setStatus(data.status || "Pending")
+                setStatus(String(data.status || "OPEN").toUpperCase())
             } catch (err: any) {
                 console.error("Failed to fetch ticket details:", err)
                 setError(err.response?.data?.message || "Failed to load ticket details")
@@ -64,16 +65,36 @@ export default function ComplaintDetail() {
     const handleResolve = async () => {
         setActionLoading(true)
         try {
-            // Check if updateTicketStatus exists in adminApi, if not just update local state
-            if ((adminApi as any).updateTicketStatus) {
-                await (adminApi as any).updateTicketStatus(id as string, { status: 'Resolved' })
+            const response = await adminApi.updateTicketStatus(id as string, { status: 'RESOLVED' })
+            const code = (response as any)?.code
+            if (code === undefined || code === 1) {
+                setStatus("RESOLVED")
+            } else {
+                console.error("Failed to resolve ticket:", (response as any)?.message)
             }
-            setStatus("Resolved")
         } catch (error) {
             console.error("Failed to resolve ticket:", error)
         } finally {
             setActionLoading(false)
             setIsResolveModalOpen(false)
+        }
+    }
+
+    const handleEscalate = async () => {
+        setActionLoading(true)
+        try {
+            const response = await adminApi.escalateTicket(id as string, { note: 'Escalated from admin panel' })
+            const code = (response as any)?.code
+            if (code === undefined || code === 1) {
+                setStatus("IN_PROGRESS")
+            } else {
+                console.error("Failed to escalate ticket:", (response as any)?.message)
+            }
+        } catch (error) {
+            console.error("Failed to escalate ticket:", error)
+        } finally {
+            setActionLoading(false)
+            setIsEscalateModalOpen(false)
         }
     }
 
@@ -127,7 +148,7 @@ export default function ComplaintDetail() {
                         </div>
                     </div>
                     <div className="pt-10">
-                        <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${status === "Resolved" || status === "Closed"
+                        <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${status === "RESOLVED" || status === "CLOSED"
                                 ? "bg-green-100 text-green-600"
                                 : "bg-yellow-100 text-yellow-600"
                             }`}>
@@ -154,7 +175,7 @@ export default function ComplaintDetail() {
                                     <span className="text-[12px] font-semibold text-slate-400 block mb-1">Related Ride</span>
                                     {complaintData.relatedRide !== "N/A" ? (
                                         <button
-                                            onClick={() => navigate(`/rides/details?id=${complaintData.relatedRide}`)}
+                                            onClick={() => navigate(`/ride/details?id=${complaintData.relatedRide}`)}
                                             className="text-[14px] font-bold text-[#FF6A1F] hover:underline"
                                         >
                                             {complaintData.relatedRide}
@@ -194,20 +215,23 @@ export default function ComplaintDetail() {
                         </div>
 
                         {/* Issue Refund Card - Hidden if resolved */}
-                        {status !== "Resolved" && status !== "Closed" && (
+                        {status !== "RESOLVED" && status !== "CLOSED" && complaintData.relatedRide !== "N/A" && (
                             <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
                                 <div className="flex items-center gap-3 mb-6">
                                     <CircleDollarSign size={20} className="text-slate-800" />
                                     <h3 className="text-[16px] font-bold text-slate-800">Issue Refund</h3>
                                 </div>
-                                <button className="w-full h-14 flex items-center justify-center border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold hover:bg-orange-50 transition-all text-[14px]">
+                                <button
+                                    onClick={() => navigate(`/booking/details?id=${complaintData.relatedRide}`)}
+                                    className="w-full h-14 flex items-center justify-center border-2 border-[#FF6A1F] rounded-xl text-[#FF6A1F] font-bold hover:bg-orange-50 transition-all text-[14px]"
+                                >
                                     Issue Refund
                                 </button>
                             </div>
                         )}
 
                         {/* Actions Card */}
-                        {status !== "Resolved" && status !== "Closed" && (
+                        {status !== "RESOLVED" && status !== "CLOSED" && (
                             <div className="bg-white rounded-[1.2rem] border border-slate-100 shadow-sm shadow-slate-200/20 p-8">
                                 <h3 className="text-[16px] font-bold text-slate-800 mb-6">Actions</h3>
                                 <div className="space-y-4">
@@ -241,14 +265,17 @@ export default function ComplaintDetail() {
                         <div className="flex items-center justify-end gap-6">
                             <button
                                 onClick={() => setIsEscalateModalOpen(false)}
-                                className="text-slate-500 font-bold hover:text-slate-800 transition-colors text-[14px]"
+                                disabled={actionLoading}
+                                className="text-slate-500 font-bold hover:text-slate-800 transition-colors text-[14px] disabled:opacity-50"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={() => setIsEscalateModalOpen(false)}
-                                className="bg-[#FF4B4B] hover:bg-red-600 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-sm text-[14px]"
+                                onClick={handleEscalate}
+                                disabled={actionLoading}
+                                className="flex items-center gap-2 bg-[#FF4B4B] hover:bg-red-600 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-sm text-[14px] disabled:opacity-70"
                             >
+                                {actionLoading && <RefreshCw size={16} className="animate-spin" />}
                                 Escalate
                             </button>
                         </div>

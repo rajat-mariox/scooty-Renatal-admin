@@ -13,6 +13,7 @@ const MaintenanceHistory = lazy(() => import("./pages/MaintenanceHistory"))
 const MaintenanceLog = lazy(() => import("./pages/MaintenanceLog"))
 const MaintenanceDetail = lazy(() => import("./pages/MaintenanceDetail"))
 const BookingControl = lazy(() => import("./pages/BookingControl"))
+const BookingDetail = lazy(() => import("./pages/BookingDetail"))
 const UserSupport = lazy(() => import("./pages/UserSupport"))
 const ComplaintDetail = lazy(() => import("./pages/ComplaintDetail"))
 const Reports = lazy(() => import("./pages/Reports"))
@@ -26,6 +27,8 @@ const OwnerManagement = lazy(() => import("./pages/admin/OwnerManagement"))
 const UserDetail = lazy(() => import("./pages/admin/UserDetail"))
 const Finance = lazy(() => import("./pages/admin/Finance"))
 const Approvals = lazy(() => import("./pages/admin/Approvals"))
+const AccessControl = lazy(() => import("./pages/admin/AccessControl"))
+const AuditLogs = lazy(() => import("./pages/admin/AuditLogs"))
 
 // Loading component
 const PageLoader = () => (
@@ -43,6 +46,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/booking" element={<BookingControl />} />
+          <Route path="/booking/details" element={<BookingDetail />} />
           <Route path="/support" element={<UserSupport />} />
           <Route path="/support/detail" element={<ComplaintDetail />} />
           <Route path="/reports" element={<Reports />} />
@@ -72,6 +76,8 @@ function App() {
           <Route path="/admin/owners/:userId" element={<UserDetail />} />
           <Route path="/admin/finance" element={<Finance />} />
           <Route path="/admin/approvals" element={<Approvals />} />
+          <Route path="/admin/access-control" element={<AccessControl />} />
+          <Route path="/admin/audit-logs" element={<AuditLogs />} />
         </Routes>
       </Suspense>
     </Router>
