@@ -3,8 +3,6 @@ import { API_ENDPOINTS } from '../config/apiConfig';
 
 const ENDPOINTS = API_ENDPOINTS.ADMIN;
 
-const emptyListResponse = { code: 1, message: 'success', data: [] };
-
 export const adminApi = {
   // Auth
   login: async (data: any) => {
@@ -74,13 +72,9 @@ export const adminApi = {
     return response.data;
   },
 
-  // This endpoint is not exposed in admin routes; keep compatibility by deriving from list.
   getStationDetails: async (id: string) => {
-    const response = await axiosInstance.get(ENDPOINTS.STATIONS.GET_ALL);
-    const payload = (response as any)?.data?.data ?? (response as any)?.data;
-    const stations = Array.isArray(payload) ? payload : (payload?.stations || []);
-    const station = stations.find((s: any) => String(s?._id || s?.id || s?.stationId) === String(id));
-    return { code: 1, message: 'success', data: station || null };
+    const response = await axiosInstance.get(ENDPOINTS.STATIONS.DETAILS(id));
+    return response.data;
   },
 
   // Content moderation
@@ -172,20 +166,6 @@ export const adminApi = {
     return response.data;
   },
 
-  // Backward-compatible helper used by current Settings page.
-  updateUser: async (userIdOrData: any, maybeData?: any) => {
-    if (typeof userIdOrData === 'string') {
-      const response = await axiosInstance.patch(ENDPOINTS.USERS.UPDATE_STATUS(userIdOrData), maybeData);
-      return response.data;
-    }
-    const userId = userIdOrData?._id || userIdOrData?.id || userIdOrData?.userId;
-    const isActive = userIdOrData?.isActive ?? true;
-    const note = userIdOrData?.note || 'Updated from admin panel';
-    if (!userId) return { code: 0, message: 'userId is required' };
-    const response = await axiosInstance.patch(ENDPOINTS.USERS.UPDATE_STATUS(userId), { isActive, note });
-    return response.data;
-  },
-
   // Pricing and commission
   getPricing: async () => {
     const response = await axiosInstance.get(ENDPOINTS.PRICING.GET);
@@ -223,15 +203,6 @@ export const adminApi = {
     return response.data;
   },
 
-  // Backward-compatible alias
-  updateSettlement: async (data: any) => {
-    const settlementId = data?.settlementId || data?._id || data?.id;
-    if (!settlementId) return { code: 0, message: 'settlementId is required' };
-    const payload = { status: data?.status, note: data?.note };
-    const response = await axiosInstance.patch(ENDPOINTS.SETTLEMENTS.UPDATE_STATUS(settlementId), payload);
-    return response.data;
-  },
-
   // Reports, transactions, ledger
   getReports: async (params?: any) => {
     const response = await axiosInstance.get(ENDPOINTS.REPORTS, { params });
@@ -261,14 +232,6 @@ export const adminApi = {
   },
 
   bookingRefund: async (bookingId: string, data: any) => {
-    const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.REFUND(bookingId), data);
-    return response.data;
-  },
-
-  // Backward-compatible aliases
-  refund: async (data: any) => {
-    const bookingId = data?.bookingId || data?._id || data?.id;
-    if (!bookingId) return { code: 0, message: 'bookingId is required' };
     const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.REFUND(bookingId), data);
     return response.data;
   },
@@ -317,18 +280,89 @@ export const adminApi = {
     return response.data;
   },
 
-  getBookings: async (_params?: any) => emptyListResponse,
-  getBookingDetails: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
-  approveBooking: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+  // Booking control
+  getBookings: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.BOOKINGS.GET_ALL, { params });
+    return response.data;
+  },
 
-  getRides: async (_params?: any) => emptyListResponse,
-  getRideDetails: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
-  forceEndRide: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
-  lockVehicle: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
+  getBookingDetails: async (bookingId: string) => {
+    const response = await axiosInstance.get(ENDPOINTS.BOOKINGS.DETAILS(bookingId));
+    return response.data;
+  },
 
-  getTickets: async (_params?: any) => emptyListResponse,
-  getTicketDetail: async (_id: string) => ({ code: 1, message: 'success', data: {} }),
-  updateTicketStatus: async (_data: any) => ({ code: 1, message: 'Not available in /admin APIs' }),
-  escalateTicket: async (_id: string) => ({ code: 1, message: 'Not available in /admin APIs' }),
+  // Backward-compatible signature: accepts { bookingId, status, note/reason }.
+  approveBooking: async (data: any) => {
+    const bookingId = data?.bookingId || data?._id || data?.id;
+    if (!bookingId) return { code: 0, message: 'bookingId is required' };
+    const status = String(data?.status || '').trim().toUpperCase();
+    if (status === 'CANCELLED') {
+      const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.CANCEL(bookingId), {
+        reason: data?.reason || data?.note || '',
+      });
+      return response.data;
+    }
+    const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.APPROVE(bookingId), {
+      note: data?.note || '',
+    });
+    return response.data;
+  },
+
+  cancelBooking: async (bookingId: string, data?: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.BOOKINGS.CANCEL(bookingId), {
+      reason: data?.reason || '',
+    });
+    return response.data;
+  },
+
+  // Ride monitoring (list responds with the same bookings/pagination shape as bookings)
+  getRides: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.RIDES.GET_ALL, { params });
+    return response.data;
+  },
+
+  getRideDetails: async (rideId: string) => {
+    const response = await axiosInstance.get(ENDPOINTS.RIDES.DETAILS(rideId));
+    return response.data;
+  },
+
+  forceEndRide: async (rideId: string, data?: any) => {
+    const response = await axiosInstance.post(ENDPOINTS.RIDES.FORCE_END(rideId), {
+      note: data?.note || '',
+    });
+    return response.data;
+  },
+
+  lockVehicle: async (rideId: string, data?: any) => {
+    const response = await axiosInstance.post(ENDPOINTS.RIDES.LOCK_VEHICLE(rideId), {
+      note: data?.note || '',
+    });
+    return response.data;
+  },
+
+  // Support tickets
+  getTickets: async (params?: any) => {
+    const response = await axiosInstance.get(ENDPOINTS.TICKETS.GET_ALL, { params });
+    return response.data;
+  },
+
+  getTicketDetail: async (ticketId: string) => {
+    const response = await axiosInstance.get(ENDPOINTS.TICKETS.DETAILS(ticketId));
+    return response.data;
+  },
+
+  updateTicketStatus: async (ticketId: string, data: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.TICKETS.UPDATE_STATUS(ticketId), {
+      status: String(data?.status || '').trim().toUpperCase(),
+    });
+    return response.data;
+  },
+
+  escalateTicket: async (ticketId: string, data?: any) => {
+    const response = await axiosInstance.patch(ENDPOINTS.TICKETS.ESCALATE(ticketId), {
+      note: data?.note || '',
+    });
+    return response.data;
+  },
 
 };

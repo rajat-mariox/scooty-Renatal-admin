@@ -17,6 +17,7 @@ import {
 import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
+import BookingFinanceActions from "../components/admin/BookingFinanceActions"
 import { adminApi } from "../services/adminApi"
 
 export default function RideDetail() {
@@ -55,7 +56,7 @@ export default function RideDetail() {
             try {
                 const response = await adminApi.getRideDetails(id)
                 const data = (response as any).data || response
-                setRide(data)
+                setRide(data?.ride ?? data)
                 setError(null)
             } catch (err: any) {
                 console.error("Failed to fetch ride details:", err)
@@ -71,13 +72,11 @@ export default function RideDetail() {
     const handleForceEnd = async () => {
         setActionLoading(true)
         try {
-            if ((adminApi as any).forceEndRide) {
-                await (adminApi as any).forceEndRide(id as string)
-            }
+            await adminApi.forceEndRide(id as string, { note: 'Force ended from admin panel' })
             setToastMessage("Ride ended successfully")
             setShowToast(true)
             setIsForceEndModalOpen(false)
-            if (ride) setRide({ ...ride, status: 'Completed' })
+            if (ride) setRide({ ...ride, status: 'COMPLETED' })
         } catch (err: any) {
             console.error("Failed to end ride:", err)
             // Show error toast logic can be added here
@@ -89,9 +88,7 @@ export default function RideDetail() {
     const handleLockVehicle = async () => {
         setActionLoading(true)
         try {
-            if ((adminApi as any).lockVehicle) {
-                await (adminApi as any).lockVehicle(ride?.vehicleId || ride?.vehicle?.id)
-            }
+            await adminApi.lockVehicle(id as string, { note: 'Vehicle locked from admin panel' })
             setToastMessage("Vehicle locked successfully")
             setShowToast(true)
             setIsLockModalOpen(false)
@@ -133,10 +130,41 @@ export default function RideDetail() {
         )
     }
 
-    const rideId = ride.rideId || ride.id || id
-    const status = ride.status || "Ongoing"
-    const isOngoing = status === "Ongoing" || status === "Active" || status === "In Progress"
-    const userPhone = ride.user?.phone || ride.userPhone || "N/A"
+    const STATUS_LABELS: Record<string, string> = {
+        ACTIVE: "Ongoing",
+        CONFIRMED: "Confirmed",
+        COMPLETED: "Completed",
+        CANCELLED: "Cancelled",
+        PENDING: "Pending",
+    }
+
+    const formatPhone = (phone: string) => {
+        const digits = String(phone || "").replace(/\D/g, "")
+        if (digits.length === 10) return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`
+        if (digits.length === 12 && digits.startsWith("91")) return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`
+        return phone || "N/A"
+    }
+
+    const formatDuration = (minutes: number) => {
+        const hrs = Math.floor(minutes / 60)
+        const mins = Math.floor(minutes % 60)
+        return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}`
+    }
+
+    const rideId = ride._id || ride.rideId || ride.id || id
+    const rideCode = searchParams.get('code') || `R-${String(rideId).slice(-6).toUpperCase()}`
+    const status = String(ride.status || "ACTIVE").toUpperCase()
+    const isOngoing = status === "ACTIVE" || status === "CONFIRMED" || status === "ONGOING"
+    const statusLabel = STATUS_LABELS[status] || status
+    const userPhone = ride.user?.mobile || ride.user?.phone || ride.userPhone || "N/A"
+    const startedAt = ride.rideStartedAt || ride.schedule?.startAt
+    const durationMinutes = status === "ACTIVE" && startedAt
+        ? Math.max(0, (Date.now() - new Date(startedAt).getTime()) / 60000)
+        : (ride.actualDurationMinutes ?? null)
+    const durationLabel = durationMinutes !== null ? formatDuration(durationMinutes) : "00:00"
+    const batteryPercent = ride.vehicle?.batteryPercent ?? ride.battery ?? 0
+    const fare = ride.totalPayable ?? ride.pricing?.totalPayable ?? 0
+    const currentLocation = ride.vehicle?.locationLabel || ride.dropStation?.name || ride.pickupStation?.name || "Location Data Unavailable"
 
     return (
         <MainLayout>
@@ -153,13 +181,13 @@ export default function RideDetail() {
                             Back to Rides
                         </button>
                         <div className="flex flex-col gap-2">
-                            <h2 className="text-xl font-extrabold text-slate-900">Ride Details - {rideId}</h2>
+                            <h2 className="text-xl font-extrabold text-slate-900">Ride Details - {rideCode}</h2>
                             <div>
                                 <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider ${isOngoing ? 'bg-green-50 text-green-600' :
-                                        status === 'Completed' ? 'bg-slate-100 text-slate-600' :
+                                        status === 'COMPLETED' ? 'bg-slate-100 text-slate-600' :
                                             'bg-rose-50 text-rose-600'
                                     }`}>
-                                    {status}
+                                    {statusLabel}
                                 </span>
                             </div>
                         </div>
@@ -208,7 +236,7 @@ export default function RideDetail() {
                                     </div>
                                     <div className="text-center">
                                         <p className="text-base font-bold text-slate-500">{isOngoing ? 'Live Map View' : 'Route View'}</p>
-                                        <p className="text-xs font-bold text-slate-400">{ride.currentLocation || ride.destination || "Location Data Unavailable"}</p>
+                                        <p className="text-xs font-bold text-slate-400">{currentLocation}</p>
                                     </div>
                                 </div>
                             </div>
@@ -221,15 +249,15 @@ export default function RideDetail() {
                                 <TimelineItem
                                     icon={<MapPin size={16} className="text-green-500" />}
                                     title="Ride Started"
-                                    location={ride.startLocation || ride.source || "Unknown Location"}
-                                    time={ride.startTime || ride.createdAt ? new Date(ride.startTime || ride.createdAt).toLocaleString() : "Recently"}
+                                    location={ride.pickupStation?.name || ride.startLocation || "Unknown Location"}
+                                    time={ride.schedule?.startLabel || (ride.rideStartedAt || ride.startAt || ride.createdAt ? new Date(ride.rideStartedAt || ride.startAt || ride.createdAt).toLocaleString() : "Recently")}
                                     isFirst
                                 />
                                 <TimelineItem
                                     icon={<Navigation size={16} className={isOngoing ? "text-blue-500" : "text-slate-500"} />}
                                     title={isOngoing ? "Currently At" : "Ended At"}
-                                    location={ride.currentLocation || ride.destination || ride.endLocation || "Unknown Location"}
-                                    time={isOngoing ? "Active" : (ride.endTime || ride.updatedAt ? new Date(ride.endTime || ride.updatedAt).toLocaleString() : "N/A")}
+                                    location={isOngoing ? currentLocation : (ride.dropStation?.name || currentLocation)}
+                                    time={isOngoing ? "Active" : (ride.schedule?.endLabel || (ride.rideEndedAt || ride.endAt || ride.updatedAt ? new Date(ride.rideEndedAt || ride.endAt || ride.updatedAt).toLocaleString() : "N/A"))}
                                     isLast
                                 />
                             </div>
@@ -249,12 +277,12 @@ export default function RideDetail() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Phone</p>
-                                    <p className="text-sm font-bold text-slate-800 mt-1">{userPhone}</p>
+                                    <p className="text-sm font-bold text-slate-800 mt-1">{formatPhone(userPhone)}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Vehicle</p>
-                                    <p className="text-sm font-bold text-[#FF6A1F] mt-1 cursor-pointer hover:underline" onClick={() => navigate(`/fleet/details?id=${ride.vehicleId || ride.vehicle?.id}`)}>
-                                        {ride.vehicleId || ride.vehicle?.id || ride.vehicle?.model || "Unknown"}
+                                    <p className="text-sm font-bold text-[#FF6A1F] mt-1 cursor-pointer hover:underline" onClick={() => navigate(`/fleet/details?id=${ride.vehicle?.id || ride.vehicleId}`)}>
+                                        {ride.vehicle?.registrationNumber || ride.vehicle?.modelName || ride.vehicle?.id || "Unknown"}
                                     </p>
                                 </div>
                             </div>
@@ -264,14 +292,14 @@ export default function RideDetail() {
                         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 space-y-6">
                             <h3 className="font-bold text-slate-800 text-sm">{isOngoing ? 'Live Statistics' : 'Ride Statistics'}</h3>
                             <div className="space-y-4">
-                                <StatRow icon={<Timer size={18} />} label="Duration" value={ride.duration || "N/A"} />
-                                <StatRow icon={<Compass size={18} />} label="Distance" value={ride.distance ? `${ride.distance} km` : "N/A"} />
-                                <StatRow icon={<Zap size={18} />} label="Battery" value={`${ride.battery || ride.vehicle?.batteryLevel || 0}%`} isWarning={(ride.battery || ride.vehicle?.batteryLevel || 100) < 20} />
+                                <StatRow icon={<Timer size={18} />} label="Duration" value={durationLabel} />
+                                <StatRow icon={<Compass size={18} />} label="Distance" value={ride.distance ? `${ride.distance} km` : "0 km"} />
+                                <StatRow icon={<Zap size={18} />} label="Battery" value={`${batteryPercent}%`} isWarning={batteryPercent < 50} />
 
                                 <div className="pt-2">
                                     <div className={`p-5 border-2 ${isOngoing ? 'border-[#FF6A1F]' : 'border-slate-200'} rounded-2xl flex items-center justify-between bg-white`}>
                                         <span className="text-sm font-bold text-slate-700">{isOngoing ? 'Current Fare' : 'Total Fare'}</span>
-                                        <span className={`text-xl font-black ${isOngoing ? 'text-[#FF6A1F]' : 'text-slate-800'}`}>₹{ride.fare || "0"}</span>
+                                        <span className={`text-xl font-black ${isOngoing ? 'text-[#FF6A1F]' : 'text-slate-800'}`}>₹{fare}</span>
                                     </div>
                                 </div>
                             </div>
@@ -299,6 +327,9 @@ export default function RideDetail() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Invoice & Refund */}
+                        <BookingFinanceActions bookingId={String(rideId)} />
 
                     </div>
                 </div>

@@ -1,9 +1,11 @@
 import { Search, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import { adminApi } from "../services/adminApi"
 
 export default function BookingControl() {
+    const navigate = useNavigate()
     const [bookingList, setBookingList] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState(false)
@@ -17,17 +19,17 @@ export default function BookingControl() {
             const response = await adminApi.getBookings()
             const data = (response as any).data || response
             const bookings = Array.isArray(data.bookings) ? data.bookings : (Array.isArray(data) ? data : [])
-            
+
             const mappedBookings = bookings.map((b: any) => ({
-                id: b.bookingId || b.id || "N/A",
-                user: b.userName || b.user?.name || "Unknown User",
-                phone: b.phone || b.user?.phone || "N/A",
-                slotTime: b.slotTime || b.createdAt || "N/A",
-                vehicle: b.vehicleId || b.vehicle?.id || "Not Assigned",
-                status: b.status || "Pending",
-                payment: b.paymentStatus || b.payment || "Pending"
+                id: b._id || b.bookingId || b.id || "N/A",
+                user: b.user?.name || b.userName || "Unknown User",
+                phone: b.user?.mobile || b.user?.phone || b.phone || "N/A",
+                slotTime: b.schedule?.startLabel || b.schedule?.startAt || b.startAt || b.createdAt || "N/A",
+                vehicle: b.vehicle?.registrationNumber || b.vehicle?.modelName || "Not Assigned",
+                status: String(b.status || "PENDING").toUpperCase(),
+                payment: String(b.payment?.status || b.paymentStatus || "PENDING").toUpperCase()
             }))
-            
+
             setBookingList(mappedBookings)
         } catch (error) {
             console.error("Failed to fetch bookings:", error)
@@ -64,7 +66,9 @@ export default function BookingControl() {
         try {
             await adminApi.approveBooking({
                 bookingId: id,
-                status: type === 'approve' ? 'Confirmed' : 'Cancelled'
+                status: type === 'approve' ? 'CONFIRMED' : 'CANCELLED',
+                note: type === 'approve' ? 'Approved from admin panel' : undefined,
+                reason: type === 'cancel' ? 'Cancelled from admin panel' : undefined,
             })
             await fetchBookings()
         } catch (error) {
@@ -118,7 +122,6 @@ export default function BookingControl() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-100/50">
-                                    <th className="px-6 py-6 text-[13px] font-semibold text-slate-600 uppercase tracking-wider">Booking ID</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-600 uppercase tracking-wider">User</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-600 uppercase tracking-wider">Phone</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-600 uppercase tracking-wider">Slot Time</th>
@@ -130,10 +133,11 @@ export default function BookingControl() {
                             </thead>
                             <tbody className="divide-y divide-slate-100/50">
                                 {filteredBookings.length > 0 ? filteredBookings.map((booking) => (
-                                    <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-5">
-                                            <span className="text-[14px] font-bold text-slate-900">{booking.id}</span>
-                                        </td>
+                                    <tr
+                                        key={booking.id}
+                                        onClick={() => navigate(`/booking/details?id=${booking.id}`)}
+                                        className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                                    >
                                         <td className="px-6 py-5">
                                             <span className="text-[14px] font-medium text-slate-700">{booking.user}</span>
                                         </td>
@@ -149,23 +153,23 @@ export default function BookingControl() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${booking.status === 'Confirmed' ? 'bg-green-50 text-green-600' :
-                                                booking.status === 'Cancelled' ? 'bg-rose-50 text-rose-600' :
+                                            <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${['CONFIRMED', 'ACTIVE', 'COMPLETED'].includes(booking.status) ? 'bg-green-50 text-green-600' :
+                                                booking.status === 'CANCELLED' ? 'bg-rose-50 text-rose-600' :
                                                     'bg-yellow-50 text-yellow-600'
                                                 }`}>
                                                 {booking.status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${(booking.payment === 'Paid' || booking.payment === 'Success') ? 'bg-green-50 text-green-600' :
+                                            <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${['PAID', 'SUCCESS', 'REFUNDED'].includes(booking.payment) ? 'bg-green-50 text-green-600' :
                                                 'bg-yellow-50 text-yellow-600'
                                                 }`}>
                                                 {booking.payment}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-5">
+                                        <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex gap-3">
-                                                {booking.status === 'Pending' && (
+                                                {booking.status === 'PENDING' && (
                                                     <button
                                                         onClick={() => {
                                                             setSelectedBookingId(booking.id)
@@ -176,7 +180,7 @@ export default function BookingControl() {
                                                         Approve
                                                     </button>
                                                 )}
-                                                {booking.status !== 'Cancelled' && (
+                                                {!['CANCELLED', 'COMPLETED'].includes(booking.status) && (
                                                     <button
                                                         onClick={() => {
                                                             setSelectedBookingId(booking.id)
@@ -192,7 +196,7 @@ export default function BookingControl() {
                                     </tr>
                                 )) : !loading && (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-2xl">
+                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-2xl">
                                             No bookings found matching your criteria
                                         </td>
                                     </tr>

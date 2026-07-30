@@ -1,4 +1,7 @@
-export const API_BASE_URL = 'https://mira-ai.marioxsoftware.net/scooty/v1/api';
+// Local backend (scooty-backend on port 3000)
+export const API_BASE_URL = 'http://localhost:3000/v1/api';
+// Hosted backend
+// export const API_BASE_URL = 'https://mira-ai.marioxsoftware.net/scooty/v1/api';
 // dev pupose// dev pupose
 export const API_ENDPOINTS = {
 
@@ -84,6 +87,7 @@ export const API_ENDPOINTS = {
       GET_ALL: '/admin/stations',
       ADD: '/admin/stations',
       UPDATE: (id: string) => `/admin/stations/${id}`,
+      DETAILS: (id: string) => `/admin/stations/${id}`,
     },
 
     RIDE_PLANS: {
@@ -137,9 +141,25 @@ export const API_ENDPOINTS = {
 
     TRANSACTIONS: '/admin/transactions',
     BOOKINGS: {
+      GET_ALL: '/admin/bookings',
+      DETAILS: (id: string) => `/admin/bookings/${id}`,
+      APPROVE: (id: string) => `/admin/bookings/${id}/approve`,
+      CANCEL: (id: string) => `/admin/bookings/${id}/cancel`,
       INVOICE: (id: string) => `/admin/bookings/${id}/invoice`,
       INVOICE_PDF: (id: string) => `/admin/bookings/${id}/invoice/pdf`,
       REFUND: (id: string) => `/admin/bookings/${id}/refund`,
+    },
+    RIDES: {
+      GET_ALL: '/admin/rides',
+      DETAILS: (id: string) => `/admin/rides/${id}`,
+      FORCE_END: (id: string) => `/admin/rides/${id}/force-end`,
+      LOCK_VEHICLE: (id: string) => `/admin/rides/${id}/lock-vehicle`,
+    },
+    TICKETS: {
+      GET_ALL: '/admin/support/tickets',
+      DETAILS: (id: string) => `/admin/support/tickets/${id}`,
+      UPDATE_STATUS: (id: string) => `/admin/support/tickets/${id}/status`,
+      ESCALATE: (id: string) => `/admin/support/tickets/${id}/escalate`,
     },
     VEHICLES: {
       GET: '/admin/vehicles',

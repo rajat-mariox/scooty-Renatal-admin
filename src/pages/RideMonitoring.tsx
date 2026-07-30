@@ -19,19 +19,55 @@ export default function RideMonitoring() {
         try {
             const response = await adminApi.getRides()
             const data = (response as any).data || response
-            const fetchedRides = Array.isArray(data.rides) ? data.rides : (Array.isArray(data) ? data : [])
-            
-            const mappedRides = fetchedRides.map((r: any) => ({
-                id: r.rideId || r.id || "N/A",
-                riderName: r.userName || r.user?.name || "Unknown Rider",
-                riderPhone: r.phone || r.user?.phone || "N/A",
-                vehicle: r.vehicleId || r.vehicle?.id || "N/A",
-                duration: r.duration || "00:00",
-                distance: r.distance ? `${r.distance} km` : "0 km",
-                battery: r.batteryLevel !== undefined ? r.batteryLevel : (r.battery || 0),
-                status: r.status || "Ongoing"
-            }))
-            
+            // The rides endpoint responds with the same shape as bookings: data.bookings + data.pagination
+            const fetchedRides = Array.isArray(data.bookings)
+                ? data.bookings
+                : Array.isArray(data.rides)
+                ? data.rides
+                : (Array.isArray(data) ? data : [])
+
+            const formatDuration = (minutes: number) => {
+                const hrs = Math.floor(minutes / 60)
+                const mins = Math.floor(minutes % 60)
+                return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}`
+            }
+
+            const formatPhone = (phone: string) => {
+                const digits = String(phone || "").replace(/\D/g, "")
+                if (digits.length === 10) return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`
+                if (digits.length === 12 && digits.startsWith("91")) return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`
+                return phone || "N/A"
+            }
+
+            const STATUS_LABELS: Record<string, string> = {
+                ACTIVE: "Ongoing",
+                CONFIRMED: "Confirmed",
+                COMPLETED: "Completed",
+                CANCELLED: "Cancelled",
+                PENDING: "Pending",
+            }
+
+            const mappedRides = fetchedRides.map((r: any, index: number) => {
+                const startedAt = r.rideStartedAt || r.schedule?.startAt
+                const durationMinutes = r.actualDurationMinutes
+                    ?? (r.status === "ACTIVE" && startedAt
+                        ? Math.max(0, (Date.now() - new Date(startedAt).getTime()) / 60000)
+                        : null)
+                const status = String(r.status || "ACTIVE").toUpperCase()
+                return {
+                    id: String(r._id || r.rideId || r.id || "N/A"),
+                    code: `R${String(index + 1).padStart(3, "0")}`,
+                    riderName: r.user?.name || r.userName || "Unknown Rider",
+                    riderPhone: formatPhone(r.user?.mobile || r.user?.phone || r.phone),
+                    vehicle: r.vehicle?.registrationNumber || r.vehicle?.modelName || "N/A",
+                    duration: durationMinutes !== null ? formatDuration(durationMinutes) : "00:00",
+                    distance: r.distance ? `${r.distance} km` : "0 km",
+                    battery: r.vehicle?.batteryPercent ?? r.batteryLevel ?? r.battery ?? 0,
+                    status,
+                    statusLabel: STATUS_LABELS[status] || status,
+                }
+            })
+
             setRides(mappedRides)
         } catch (error) {
             console.error("Failed to fetch rides:", error)
@@ -48,6 +84,7 @@ export default function RideMonitoring() {
         const query = searchQuery.toLowerCase()
         return (
             ride.id.toLowerCase().includes(query) ||
+            ride.code.toLowerCase().includes(query) ||
             ride.riderName.toLowerCase().includes(query) ||
             ride.vehicle.toLowerCase().includes(query)
         )
@@ -105,7 +142,7 @@ export default function RideMonitoring() {
                         <tbody className="divide-y divide-slate-50/50">
                             {filteredRides.length > 0 ? filteredRides.map((ride) => (
                                 <tr key={ride.id} className="hover:bg-slate-50/30 transition-all group">
-                                    <td className="px-6 py-8 text-sm font-bold text-slate-700">{ride.id}</td>
+                                    <td className="px-6 py-8 text-sm font-bold text-slate-700">{ride.code}</td>
                                     <td className="px-6 py-8">
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold text-slate-900">{ride.riderName}</span>
@@ -116,18 +153,23 @@ export default function RideMonitoring() {
                                     <td className="px-6 py-8 text-sm font-bold text-slate-500">{ride.duration}</td>
                                     <td className="px-6 py-8 text-sm font-bold text-slate-500">{ride.distance}</td>
                                     <td className="px-6 py-8">
-                                        <span className={`text-sm font-bold ${ride.battery < 50 ? 'text-yellow-500' : 'text-green-500'}`}>
+                                        <span className={`text-sm font-bold ${ride.battery < 20 ? 'text-red-500' : ride.battery < 50 ? 'text-yellow-500' : 'text-green-500'}`}>
                                             {ride.battery}%
                                         </span>
                                     </td>
                                     <td className="px-6 py-8">
-                                        <span className="px-4 py-1.5 bg-green-50 text-green-600 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                                            {ride.status}
+                                        <span className={`px-4 py-1.5 text-[10px] font-bold rounded-full capitalize tracking-wider ${
+                                            ride.status === "ACTIVE" ? "bg-green-50 text-green-600"
+                                            : ride.status === "CONFIRMED" ? "bg-blue-50 text-blue-600"
+                                            : ride.status === "CANCELLED" ? "bg-red-50 text-red-500"
+                                            : "bg-slate-100 text-slate-500"
+                                        }`}>
+                                            {ride.statusLabel}
                                         </span>
                                     </td>
                                     <td className="px-6 py-8">
                                         <button
-                                            onClick={() => navigate(`/ride/details?id=${ride.id}`)}
+                                            onClick={() => navigate(`/ride/details?id=${ride.id}&code=${ride.code}`)}
                                             className="px-6 py-2 bg-[#FF6A1F] text-white text-[10px] font-extrabold rounded-xl shadow-lg shadow-orange-100 hover:bg-orange-600 transition-all uppercase tracking-wider"
                                         >
                                             View Details

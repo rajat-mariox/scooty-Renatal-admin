@@ -18,13 +18,13 @@ export default function UserSupport() {
             const fetchedTickets = Array.isArray(data.tickets) ? data.tickets : (Array.isArray(data) ? data : [])
             
             const mappedTickets = fetchedTickets.map((t: any) => ({
-                id: t.ticketId || t.id || "N/A",
-                user: t.userName || t.user?.name || "Unknown User",
-                phone: t.phone || t.user?.phone || "N/A",
-                issue: t.issue || t.subject || t.description || "No description",
-                rideId: t.rideId || t.ride?.id || "-",
-                date: t.date || t.createdAt ? new Date(t.date || t.createdAt).toISOString().split('T')[0] : "N/A",
-                status: t.status || "Pending"
+                id: t._id || t.ticketId || t.id || "N/A",
+                user: t.userId?.name || t.user?.name || t.userName || "Unknown User",
+                phone: t.userId?.mobile || t.user?.mobile || t.phone || "N/A",
+                issue: t.subject || t.message || t.issue || t.description || "No description",
+                rideId: t.bookingId || t.rideId || "-",
+                date: t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : "N/A",
+                status: String(t.status || "OPEN").toUpperCase()
             }))
             
             setComplaints(mappedTickets)
@@ -97,7 +97,6 @@ export default function UserSupport() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-50">
-                                    <th className="px-6 py-6 text-[13px] font-semibold text-slate-400">ID</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-400">User</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-400">Phone</th>
                                     <th className="px-6 py-6 text-[13px] font-semibold text-slate-400">Issue</th>
@@ -110,9 +109,6 @@ export default function UserSupport() {
                             <tbody className="divide-y divide-slate-50">
                                 {filteredComplaints.length > 0 ? filteredComplaints.map((complaint) => (
                                     <tr key={complaint.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-5">
-                                            <span className="text-[14px] font-bold text-slate-800">{complaint.id}</span>
-                                        </td>
                                         <td className="px-6 py-5">
                                             <span className="text-[14px] text-slate-600 font-medium">{complaint.user}</span>
                                         </td>
@@ -130,7 +126,7 @@ export default function UserSupport() {
                                         </td>
                                         <td className="px-6 py-5">
                                             <span className={`px-4 py-1 text-[11px] font-bold rounded-full inline-block ${
-                                                complaint.status === "Pending" || complaint.status === 'Open' || complaint.status === 'In Progress'
+                                                complaint.status === "OPEN" || complaint.status === "IN_PROGRESS" || complaint.status === "PENDING"
                                                     ? "bg-yellow-100 text-yellow-600"
                                                     : "bg-green-100 text-green-600"
                                             }`}>
@@ -148,7 +144,7 @@ export default function UserSupport() {
                                     </tr>
                                 )) : !loading && (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-xl">
+                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium border-2 border-dashed border-slate-50 rounded-xl">
                                             No support tickets found matching your criteria
                                         </td>
                                     </tr>

@@ -11,6 +11,31 @@ import MainLayout from "../layouts/MainLayout"
 import { useState, useEffect, useRef } from "react"
 import { adminApi } from "../services/adminApi"
 
+const STATUS_DISPLAY: Record<string, string> = {
+    ACTIVE: "Active",
+    IN_RIDE: "In Ride",
+    CHARGING: "Charging",
+    MAINTENANCE: "Maintenance",
+    DRAFT: "Draft",
+    PENDING_APPROVAL: "Pending",
+    INACTIVE: "Inactive",
+    REMOVAL_REQUESTED: "Removal Requested",
+    REMOVED: "Removed",
+}
+
+const STATUS_PILL_CLASSES: Record<string, string> = {
+    "Active": "bg-green-100 text-green-600",
+    "In Ride": "bg-blue-100 text-blue-600",
+    "Charging": "bg-yellow-100 text-yellow-700",
+    "Maintenance": "bg-red-100 text-red-500",
+    "Draft": "bg-slate-100 text-slate-500",
+    "Pending": "bg-orange-100 text-orange-500",
+    "Inactive": "bg-slate-100 text-slate-500",
+}
+
+const toDisplayStatus = (status: string) =>
+    STATUS_DISPLAY[String(status || "").toUpperCase().replace(/ /g, "_")] || (status || "Unknown")
+
 export default function FleetManagement() {
     const navigate = useNavigate()
     const [searchQuery, setSearchQuery] = useState("")
@@ -74,7 +99,7 @@ export default function FleetManagement() {
             const queryStationId = stationId && stationId !== "all" ? stationId : undefined
             const response = await adminApi.getVehicles(queryStationId ? { stationId: queryStationId } : undefined)
             const data = (response as any).data || response
-            
+
             // Format data if needed so it matches the table expectation
             const fetchedVehicles = Array.isArray(data.vehicles) ? data.vehicles : (Array.isArray(data) ? data : [])
             const mappedVehicles = fetchedVehicles.map((v: any) => ({
@@ -82,10 +107,14 @@ export default function FleetManagement() {
                 vehicleId: v.vehicleId || v.registrationNumber || v.id || v._id || "N/A",
                 registrationNumber: v.registrationNumber || v.vehicleId || v.id || "N/A",
                 model: v.modelName || v.model || "Unknown Model",
-                battery: v.batteryPercent !== undefined ? v.batteryPercent : (v.batteryLevel !== undefined ? v.batteryLevel : (v.battery || 0)),
-                status: String(v.status || "ACTIVE").replace(/_/g, " "),
+                battery: v.batteryPercent !== undefined && v.batteryPercent !== null
+                    ? v.batteryPercent
+                    : (v.batteryLevel !== undefined ? v.batteryLevel : (v.battery || 0)),
+                status: toDisplayStatus(v.status),
                 location: v.locationLabel || v.location || v.currentLocation || v.station?.name || "Station",
-                lastRide: v.lastRide?.rideId || v.lastRide?.id || v.lastRide || "N/A"
+                lastRide: (v.lastRide && typeof v.lastRide === 'object')
+                    ? (v.lastRide.label || v.lastRide.status || "N/A")
+                    : (v.lastRide || "N/A")
             }))
 
             setVehicles(mappedVehicles)
@@ -108,14 +137,14 @@ export default function FleetManagement() {
         if (!modalAction) return
         setActionLoading(true)
         try {
-            let statusToUpdate = modalAction.type === 'charging' ? 'Charging' : 
-                                 modalAction.type === 'maintenance' ? 'Maintenance' : 'Active'
-                                 
+            let statusToUpdate = modalAction.type === 'charging' ? 'CHARGING' :
+                modalAction.type === 'maintenance' ? 'MAINTENANCE' : 'ACTIVE'
+
             await adminApi.updateVehicleStatus(modalAction.id, {
-                status: statusToUpdate.toUpperCase().replace(" ", "_")
+                status: statusToUpdate
             })
             // Refresh list
-            await fetchVehicles()
+            await fetchVehicles(selectedStationId)
         } catch (error) {
             console.error("Failed to update status:", error)
         } finally {
@@ -132,9 +161,8 @@ export default function FleetManagement() {
             v.model.toLowerCase().includes(query) ||
             v.location.toLowerCase().includes(query)
         )
-        const normalizedStatus = String(v.status || "").toLowerCase()
-        const matchesStatus = statusFilter === "All" || normalizedStatus === statusFilter.toLowerCase()
-        
+        const matchesStatus = statusFilter === "All" || v.status === statusFilter
+
         return matchesSearch && matchesStatus
     })
 
@@ -152,20 +180,20 @@ export default function FleetManagement() {
                 </div>
 
                 {/* Filter Bar */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3">
                     <div className="flex-1 relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search by ID, model, or registration.."
-                            className="w-full bg-white border border-slate-100 rounded-xl pl-12 pr-6 py-2.5 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-orange-200 transition-all placeholder:text-slate-300"
+                            placeholder="Search by ID, model, or registration..."
+                            className="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-6 py-2.5 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-orange-200 focus:border-orange-200 transition-all placeholder:text-slate-300"
                         />
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         <div className="relative" ref={filterRef}>
-                            <button 
+                            <button
                                 onClick={() => setIsFilterOpen(!isFilterOpen)}
                                 className={`p-2.5 rounded-xl transition-all border ${isFilterOpen || statusFilter !== 'All' ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-transparent text-slate-400 hover:bg-slate-50'}`}
                             >
@@ -195,14 +223,14 @@ export default function FleetManagement() {
                         <div className="relative" ref={stationRef}>
                             <button
                                 onClick={() => setIsStationOpen(!isStationOpen)}
-                                className={`flex items-center justify-between gap-8 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                                className={`flex items-center justify-between gap-6 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border ${
                                     selectedStationId === "all"
-                                        ? "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                                        ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                         : "bg-orange-50 border-orange-200 text-orange-700"
                                 }`}
                             >
                                 <span className="max-w-[180px] truncate">{selectedStationLabel}</span>
-                                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isStationOpen ? "rotate-180" : ""}`} />
+                                <ChevronDown size={16} className={`text-slate-400 transition-transform ${isStationOpen ? "rotate-180" : ""}`} />
                             </button>
 
                             {isStationOpen && (
@@ -262,7 +290,7 @@ export default function FleetManagement() {
                 </div>
 
                 {/* Vehicle Table Card */}
-                <div className="bg-white rounded-[2rem] border border-slate-100/80 shadow-sm overflow-hidden p-6 relative min-h-[400px]">
+                <div className="bg-white rounded-3xl border border-slate-100/80 shadow-sm overflow-hidden p-6 relative min-h-[400px]">
                     {loading ? (
                         <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
                             <div className="flex flex-col items-center gap-3">
@@ -273,24 +301,24 @@ export default function FleetManagement() {
                     ) : null}
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="border-b border-slate-50">
-                                <th className="px-6 py-4 text-xs font-bold text-slate-400/80">Vehicle ID</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-400/80">Model</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-400/80">Battery</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-400/80">Status</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-400/80">Location</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-400/80">Last Ride</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-400/80 text-right">Actions</th>
+                            <tr className="border-b border-slate-100">
+                                <th className="px-6 py-4 text-sm font-bold text-slate-500">Vehicle ID</th>
+                                <th className="px-6 py-4 text-sm font-bold text-slate-500">Model</th>
+                                <th className="px-6 py-4 text-sm font-bold text-slate-500">Battery</th>
+                                <th className="px-6 py-4 text-sm font-bold text-slate-500">Status</th>
+                                <th className="px-6 py-4 text-sm font-bold text-slate-500">Location</th>
+                                <th className="px-6 py-4 text-sm font-bold text-slate-500">Last Ride</th>
+                                <th className="px-6 py-4 text-sm font-bold text-slate-500 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50/50">
+                        <tbody className="divide-y divide-slate-50">
                             {filteredVehicles.length > 0 ? filteredVehicles.map((v) => (
                                 <tr
                                     key={v.id}
                                     onClick={() => navigate(`/fleet/details?id=${v.id}`)}
-                                    className="hover:bg-slate-50/30 transition-all cursor-pointer group"
+                                    className="hover:bg-slate-50/50 transition-all cursor-pointer group"
                                 >
-                                    <td className="px-6 py-6 text-sm font-bold text-slate-700">
+                                    <td className="px-6 py-6 text-sm font-extrabold text-slate-800">
                                         {v.registrationNumber}
                                     </td>
                                     <td className="px-6 py-6 text-sm font-medium text-slate-500">
@@ -298,14 +326,14 @@ export default function FleetManagement() {
                                     </td>
                                     <td className="px-6 py-6">
                                         <div className="flex items-center gap-3">
-                                            <span className={`text-sm font-bold w-9 ${v.battery <= 15 ? 'text-rose-500' :
+                                            <span className={`text-sm font-bold w-10 ${v.battery <= 15 ? 'text-red-500' :
                                                 v.battery <= 50 ? 'text-yellow-500' : 'text-green-500'
                                                 }`}>
                                                 {v.battery}%
                                             </span>
-                                            <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
+                                            <div className="w-20 h-2 bg-slate-200/70 rounded-full overflow-hidden shrink-0">
                                                 <div
-                                                    className={`h-full rounded-full transition-all duration-500 ${v.battery <= 15 ? 'bg-rose-500' :
+                                                    className={`h-full rounded-full transition-all duration-500 ${v.battery <= 15 ? 'bg-red-500' :
                                                         v.battery <= 50 ? 'bg-yellow-500' : 'bg-green-500'
                                                         }`}
                                                     style={{ width: `${Math.min(Math.max(v.battery, 0), 100)}%` }}
@@ -314,19 +342,14 @@ export default function FleetManagement() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-6">
-                                        <span className={`px-4 py-1.5 text-[10px] font-bold rounded-full transition-all ${v.status === 'ACTIVE' ? 'bg-green-100/50 text-green-600' :
-                                            v.status === 'IN RIDE' ? 'bg-blue-100/50 text-blue-600' :
-                                                v.status === 'CHARGING' ? 'bg-yellow-100/50 text-yellow-600' :
-                                                    v.status === 'MAINTENANCE' ? 'bg-rose-100/50 text-rose-600' :
-                                                    'bg-slate-100/50 text-slate-600'
-                                            }`}>
+                                        <span className={`px-4 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition-all ${STATUS_PILL_CLASSES[v.status] || 'bg-slate-100 text-slate-500'}`}>
                                             {v.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-6 text-sm font-medium text-slate-500">
                                         {v.location}
                                     </td>
-                                    <td className="px-6 py-6 text-sm font-medium text-slate-500">
+                                    <td className="px-6 py-6 text-sm font-medium text-slate-400">
                                         {v.lastRide}
                                     </td>
                                     <td className="px-6 py-6 text-right">
@@ -336,7 +359,7 @@ export default function FleetManagement() {
                                                     e.stopPropagation()
                                                     setOpenMenuId(openMenuId === v.id ? null : v.id)
                                                 }}
-                                                className="p-2 text-slate-300 hover:text-slate-600 transition-colors"
+                                                className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
                                             >
                                                 <MoreVertical size={18} />
                                             </button>
@@ -407,7 +430,7 @@ export default function FleetManagement() {
                         <div className="bg-white rounded-[2.5rem] shadow-2xl p-10 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
                             <h3 className="text-sm font-extrabold text-[#1E293B] mb-2">Confirm Action</h3>
                             <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
-                                Are you sure you want to change {modalAction.id}'s status to <strong>{modalAction.text}</strong>?
+                                Are you sure you want to change this vehicle's status to <strong>{modalAction.text}</strong>?
                             </p>
                             <div className="flex gap-4">
                                 <button
