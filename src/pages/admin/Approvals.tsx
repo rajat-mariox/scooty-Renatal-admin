@@ -1,9 +1,10 @@
-import { ClipboardCheck, RefreshCw, CheckCircle, XCircle, X, MapPin, Clock, IndianRupee, Tag, BadgeInfo, User, CalendarDays } from "lucide-react"
+import { ClipboardCheck, RefreshCw, CheckCircle, XCircle, X, MapPin, Clock, IndianRupee, Tag, BadgeInfo, User, CalendarDays, Bike, FileText } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import MainLayout from "../../layouts/MainLayout"
 import { adminApi } from "../../services/adminApi"
+import { API_BASE_URL } from "../../config/apiConfig"
 
-type ApprovalTab = "ride-plans" | "faqs"
+type ApprovalTab = "ride-plans" | "faqs" | "vehicles"
 type ViewMode = "pending" | "all"
 type ReviewStatus = "APPROVED" | "REJECTED"
 
@@ -15,8 +16,19 @@ function unwrapList(payload: any): any[] {
     if (Array.isArray(payload?.data?.plans)) return payload.data.plans
     if (Array.isArray(payload?.ridePlans)) return payload.ridePlans
     if (Array.isArray(payload?.faqs)) return payload.faqs
+    if (Array.isArray(payload?.vehicles)) return payload.vehicles
+    if (Array.isArray(payload?.data?.vehicles)) return payload.data.vehicles
     if (Array.isArray(payload?.items)) return payload.items
     return []
+}
+
+const API_ORIGIN = API_BASE_URL.replace(/\/(?:scooty\/)?v1\/api\/?$/, "")
+
+function assetUrl(path: any): string | null {
+    const raw = String(path || "").trim()
+    if (!raw) return null
+    if (/^https?:\/\//i.test(raw)) return encodeURI(raw)
+    return encodeURI(`${API_ORIGIN}${raw.startsWith("/") ? "" : "/"}${raw}`)
 }
 
 function isPendingStatus(value: unknown): boolean {
@@ -54,9 +66,16 @@ export default function Approvals() {
         setLoading(true)
         try {
             const wantsPending = viewMode === "pending"
-            const params = wantsPending ? { status: "PENDING" } : undefined
+            const params = wantsPending
+                ? { status: activeTab === "vehicles" ? "PENDING_APPROVAL" : "PENDING" }
+                : undefined
 
-            const res = activeTab === "ride-plans" ? await adminApi.getRidePlans(params) : await adminApi.getFaqs(params)
+            const res =
+                activeTab === "ride-plans"
+                    ? await adminApi.getRidePlans(params)
+                    : activeTab === "faqs"
+                      ? await adminApi.getFaqs(params)
+                      : await adminApi.getVehicles(params)
             const payload = (res as any)?.data ?? res
             const list = unwrapList(payload)
 
@@ -71,7 +90,12 @@ export default function Approvals() {
             }
 
             // Fallback: some backends ignore/expect different status casing/keys.
-            const resAll = activeTab === "ride-plans" ? await adminApi.getRidePlans() : await adminApi.getFaqs()
+            const resAll =
+                activeTab === "ride-plans"
+                    ? await adminApi.getRidePlans()
+                    : activeTab === "faqs"
+                      ? await adminApi.getFaqs()
+                      : await adminApi.getVehicles()
             const payloadAll = (resAll as any)?.data ?? resAll
             const listAll = unwrapList(payloadAll)
             setItems(listAll.filter((x) => isPendingStatus(x?.status)))
@@ -88,15 +112,24 @@ export default function Approvals() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab, viewMode])
 
-    const title = useMemo(() => (activeTab === "ride-plans" ? "Ride Plans" : "FAQs"), [activeTab])
+    const title = useMemo(
+        () => (activeTab === "ride-plans" ? "Ride Plans" : activeTab === "faqs" ? "FAQs" : "Vehicles"),
+        [activeTab],
+    )
 
     const review = async (id: string, status: ReviewStatus, rejectionReason?: string) => {
         setActionLoadingId(id)
         try {
             if (activeTab === "ride-plans") {
                 await adminApi.reviewRidePlan(id, status === "APPROVED" ? { status: "APPROVED" } : { status: "REJECTED", rejectionReason: rejectionReason || "" })
-            } else {
+            } else if (activeTab === "faqs") {
                 await adminApi.reviewFaq(id, status === "APPROVED" ? { status: "APPROVED" } : { status: "REJECTED", rejectionReason: rejectionReason || "" })
+            } else {
+                // Vehicles: approve -> ACTIVE, reject -> back to DRAFT so the owner can fix & resubmit.
+                await adminApi.updateVehicleStatus(
+                    id,
+                    status === "APPROVED" ? { status: "ACTIVE", note: "" } : { status: "DRAFT", note: rejectionReason || "" },
+                )
             }
             setSelected(null)
             setRejectReason("")
@@ -138,6 +171,15 @@ export default function Approvals() {
                         <ClipboardCheck size={18} />
                         FAQs
                     </button>
+                    <button
+                        onClick={() => setActiveTab("vehicles")}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                            activeTab === "vehicles" ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                        }`}
+                    >
+                        <Bike size={18} />
+                        Vehicles
+                    </button>
                 </div>
 
                 <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
@@ -172,14 +214,21 @@ export default function Approvals() {
                     {items.length === 0 && !loading ? (
                         <div className="py-20 text-center text-slate-400 font-medium">
                             {viewMode === "pending" ? "No pending " : "No "}
-                            {activeTab === "ride-plans" ? "ride plans" : "FAQs"}.
+                            {activeTab === "ride-plans" ? "ride plans" : activeTab === "faqs" ? "FAQs" : "vehicles"}.
                         </div>
                     ) : (
                         <div className="divide-y">
                             {items.map((item) => {
                                 const id = String(item?._id || item?.id || "")
-                                const heading = item?.title || item?.question || item?.name || "—"
-                                const sub = item?.description || item?.answer || item?.summary || ""
+                                const isVehicle = activeTab === "vehicles"
+                                const heading = isVehicle
+                                    ? item?.modelName || item?.registrationNumber || "Vehicle"
+                                    : item?.title || item?.question || item?.name || "—"
+                                const sub = isVehicle
+                                    ? [item?.owner?.name ? `Owner: ${item.owner.name}` : "", item?.station?.name ? `Station: ${item.station.name}` : ""]
+                                          .filter(Boolean)
+                                          .join(" • ")
+                                    : item?.description || item?.answer || item?.summary || ""
                                 const status = String(item?.status ?? "")
                                 const pending = isPendingStatus(status)
                                 const disabled = actionLoadingId === id
@@ -237,6 +286,28 @@ export default function Approvals() {
                                                     ) : null}
                                                 </div>
                                             ) : null}
+                                            {isVehicle ? (
+                                                <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-extrabold text-slate-500">
+                                                    {item?.registrationNumber ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-100">
+                                                            <Tag size={12} />
+                                                            {String(item.registrationNumber)}
+                                                        </span>
+                                                    ) : null}
+                                                    {item?.chassisNumber ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-100">
+                                                            <BadgeInfo size={12} />
+                                                            {String(item.chassisNumber)}
+                                                        </span>
+                                                    ) : null}
+                                                    {item?.createdAt ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-100">
+                                                            <CalendarDays size={12} />
+                                                            {formatDate(item.createdAt)}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
                                         </div>
                                         {pending ? (
                                             <div className="shrink-0 flex items-center gap-2">
@@ -281,7 +352,11 @@ export default function Approvals() {
                             <div className="min-w-0">
                                 <div className="text-xs font-extrabold tracking-wider text-slate-400 uppercase">Approval Details</div>
                                 <div className="text-xl font-black text-slate-900 truncate">
-                                    {activeTab === "ride-plans" ? (selected?.name || "Ride Plan") : (selected?.question || selected?.title || "Item")}
+                                    {activeTab === "ride-plans"
+                                        ? selected?.name || "Ride Plan"
+                                        : activeTab === "vehicles"
+                                          ? selected?.modelName || selected?.registrationNumber || "Vehicle"
+                                          : selected?.question || selected?.title || "Item"}
                                 </div>
                                 <div className="mt-1 text-xs font-semibold text-slate-500">
                                     Status: <span className="font-extrabold text-slate-700">{String(selected?.status || "—")}</span>
@@ -396,6 +471,109 @@ export default function Approvals() {
                                         <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
                                             <div className="text-[11px] font-extrabold tracking-wide text-rose-700 uppercase">Rejection reason</div>
                                             <div className="mt-1 text-sm font-semibold text-rose-800 whitespace-pre-wrap">{String(selected?.rejectionReason || "—")}</div>
+                                        </div>
+                                    ) : null}
+                                </>
+                            ) : activeTab === "vehicles" ? (
+                                <>
+                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
+                                        <div className="text-xs font-extrabold tracking-wide text-slate-600 uppercase">What to check</div>
+                                        <ul className="text-xs font-semibold text-slate-600 list-disc pl-4 space-y-1">
+                                            <li>Front & side photos clearly show the scooty</li>
+                                            <li>Registration number matches the RC document</li>
+                                            <li>Insurance document is valid & readable</li>
+                                            <li>Station assignment makes sense for the owner's city</li>
+                                        </ul>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="text-[11px] font-extrabold tracking-wide text-slate-500 uppercase">Vehicle Photos</div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { label: "Front View", url: assetUrl(selected?.photos?.frontUrl) },
+                                                { label: "Side View", url: assetUrl(selected?.photos?.sideUrl) },
+                                            ].map((photo) => (
+                                                <div key={photo.label} className="rounded-2xl border border-slate-100 overflow-hidden">
+                                                    {photo.url ? (
+                                                        <a href={photo.url} target="_blank" rel="noreferrer">
+                                                            <img src={photo.url} alt={photo.label} className="w-full h-36 object-cover" />
+                                                        </a>
+                                                    ) : (
+                                                        <div className="w-full h-36 flex items-center justify-center text-xs font-bold text-slate-300">Not uploaded</div>
+                                                    )}
+                                                    <div className="px-3 py-2 text-[11px] font-extrabold text-slate-500 uppercase">{photo.label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="text-[11px] font-extrabold tracking-wide text-slate-500 uppercase">Documents</div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { label: "RC Document", url: assetUrl(selected?.documents?.rcUrl) },
+                                                { label: "Insurance", url: assetUrl(selected?.documents?.insuranceUrl) },
+                                            ].map((doc) => (
+                                                <div key={doc.label} className="rounded-2xl border border-slate-100 p-4">
+                                                    <div className="text-[11px] font-extrabold tracking-wide text-slate-500 uppercase flex items-center gap-2">
+                                                        <FileText size={14} /> {doc.label}
+                                                    </div>
+                                                    {doc.url ? (
+                                                        <a
+                                                            href={doc.url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-orange-600 hover:text-orange-700"
+                                                        >
+                                                            View document
+                                                        </a>
+                                                    ) : (
+                                                        <div className="mt-2 text-xs font-bold text-slate-300">Not uploaded</div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="rounded-2xl border border-slate-100 p-4">
+                                            <div className="text-[11px] font-extrabold tracking-wide text-slate-500 uppercase flex items-center gap-2">
+                                                <Tag size={14} /> Registration No.
+                                            </div>
+                                            <div className="mt-1 text-sm font-black text-slate-900">{selected?.registrationNumber || "—"}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-slate-100 p-4">
+                                            <div className="text-[11px] font-extrabold tracking-wide text-slate-500 uppercase flex items-center gap-2">
+                                                <BadgeInfo size={14} /> Chassis No.
+                                            </div>
+                                            <div className="mt-1 text-sm font-black text-slate-900">{selected?.chassisNumber || "—"}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-slate-100 p-4">
+                                            <div className="text-[11px] font-extrabold tracking-wide text-slate-500 uppercase flex items-center gap-2">
+                                                <User size={14} /> Owner
+                                            </div>
+                                            <div className="mt-1 text-sm font-black text-slate-900">{selected?.owner?.name || "—"}</div>
+                                            {selected?.owner?.email ? <div className="text-xs font-semibold text-slate-500">{selected.owner.email}</div> : null}
+                                        </div>
+                                        <div className="rounded-2xl border border-slate-100 p-4">
+                                            <div className="text-[11px] font-extrabold tracking-wide text-slate-500 uppercase flex items-center gap-2">
+                                                <MapPin size={14} /> Station
+                                            </div>
+                                            <div className="mt-1 text-sm font-black text-slate-900">{selected?.station?.name || "—"}</div>
+                                            {selected?.station?.address ? <div className="text-xs font-semibold text-slate-500">{selected.station.address}</div> : null}
+                                        </div>
+                                        <div className="rounded-2xl border border-slate-100 p-4 col-span-2">
+                                            <div className="text-[11px] font-extrabold tracking-wide text-slate-500 uppercase flex items-center gap-2">
+                                                <CalendarDays size={14} /> Submitted
+                                            </div>
+                                            <div className="mt-1 text-sm font-black text-slate-900">{formatDate(selected?.createdAt)}</div>
+                                        </div>
+                                    </div>
+
+                                    {selected?.approvalNote ? (
+                                        <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
+                                            <div className="text-[11px] font-extrabold tracking-wide text-rose-700 uppercase">Last review note</div>
+                                            <div className="mt-1 text-sm font-semibold text-rose-800 whitespace-pre-wrap">{String(selected.approvalNote)}</div>
                                         </div>
                                     ) : null}
                                 </>
