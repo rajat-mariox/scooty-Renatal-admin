@@ -1,8 +1,6 @@
-// Backend base URL comes from the environment:
-//   .env.development -> local scooty-backend (npm run dev)
-//   .env.production  -> hosted backend (npm run build / Vercel)
-//   .env.local       -> per-machine override (git-ignored)
-//   Vercel           -> set VITE_API_BASE_URL in the project's Environment Variables
+// Backend base URL comes from the `.env` file (VITE_API_BASE_URL), which is
+// git-ignored so every machine keeps its own. On Vercel, set VITE_API_BASE_URL
+// under Project Settings > Environment Variables.
 const HOSTED_API_BASE_URL = 'https://backend.slydomobility.com/v1/api';
 const envApiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
 if (!envApiBaseUrl) {
