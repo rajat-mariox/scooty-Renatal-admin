@@ -209,7 +209,7 @@ export default function UserDetail() {
                                 {user.adharFile && (
                                     <div className="border border-slate-200 rounded-2xl p-4">
                                         <div className="flex items-center justify-between mb-3">
-                                            <h4 className="font-semibold text-slate-800">Aadhar Document</h4>
+                                            <h4 className="font-semibold text-slate-800">Aadhaar Card (Front)</h4>
                                             <a
                                                 href={user.adharFile}
                                                 target="_blank"
@@ -226,10 +226,50 @@ export default function UserDetail() {
                                     </div>
                                 )}
 
+                                {user.adharBackFile && (
+                                    <div className="border border-slate-200 rounded-2xl p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h4 className="font-semibold text-slate-800">Aadhaar Card (Back)</h4>
+                                            <a
+                                                href={user.adharBackFile}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                            >
+                                                <Download size={16} />
+                                                Download
+                                            </a>
+                                        </div>
+                                        {user.adharBackFile.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                                            <img src={user.adharBackFile} alt="Aadhaar back" className="max-h-64 rounded-lg object-contain" />
+                                        )}
+                                    </div>
+                                )}
+
+                                {user.drivingLicenseFile && (
+                                    <div className="border border-slate-200 rounded-2xl p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h4 className="font-semibold text-slate-800">Driving License</h4>
+                                            <a
+                                                href={user.drivingLicenseFile}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                            >
+                                                <Download size={16} />
+                                                Download
+                                            </a>
+                                        </div>
+                                        {user.drivingLicenseFile.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                                            <img src={user.drivingLicenseFile} alt="Driving license" className="max-h-64 rounded-lg object-contain" />
+                                        )}
+                                    </div>
+                                )}
+
                                 {user.panFile && (
                                     <div className="border border-slate-200 rounded-2xl p-4">
                                         <div className="flex items-center justify-between mb-3">
-                                            <h4 className="font-semibold text-slate-800">PAN Document</h4>
+                                            <h4 className="font-semibold text-slate-800">PAN Card (optional)</h4>
                                             <a
                                                 href={user.panFile}
                                                 target="_blank"
@@ -246,7 +286,7 @@ export default function UserDetail() {
                                     </div>
                                 )}
 
-                                {!user.profilePhotoUrl && !user.adharFile && !user.panFile && (
+                                {!user.profilePhotoUrl && !user.adharFile && !user.adharBackFile && !user.drivingLicenseFile && !user.panFile && (
                                     <p className="text-slate-500 text-center py-8">No KYC documents uploaded yet.</p>
                                 )}
                             </div>
