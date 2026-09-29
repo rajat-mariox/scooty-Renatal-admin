@@ -22,6 +22,8 @@ export default function AddVehicle() {
     model: "Ola S1 Pro",
     station: "Station A",
     status: "Active",
+    // OWNER = listed by an individual owner, SLYDO = company fleet (commission plan)
+    ownershipType: "SLYDO",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +43,8 @@ export default function AddVehicle() {
         registrationNo: formData.registrationNo,
         model: formData.model,
         stationId: formData.station, // Ensure this maps to what the backend expects
-        status: formData.status
+        status: formData.status,
+        ownershipType: formData.ownershipType,
       });
       navigate("/fleet");
     } catch (err: any) {
@@ -185,6 +188,26 @@ export default function AddVehicle() {
                   <p className="text-[10px] text-slate-400 font-medium pt-1">
                     New vehicles are usually set to Active or Maintenance for
                     initial inspection.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Ownership
+                  </label>
+                  <select
+                    value={formData.ownershipType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, ownershipType: e.target.value })
+                    }
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="SLYDO">Slydo-owned (company fleet)</option>
+                    <option value="OWNER">Owner-listed (individual owner)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 font-medium pt-1">
+                    Decides which commission plan applies when rides on this
+                    vehicle complete (Finance &gt; Commission Settings).
                   </p>
                 </div>
               </div>
