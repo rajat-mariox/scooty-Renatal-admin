@@ -1,13 +1,13 @@
-import { RefreshCw, DollarSign, Wallet, ArrowUpRight, ArrowDownLeft, FileText, Settings, BadgePercent, Coins, Plus, X } from "lucide-react"
+import { RefreshCw, Wallet, Settings, BadgePercent, Coins, Plus, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import MainLayout from "../../layouts/MainLayout"
 import PrimaryButton from "../../components/PrimaryButton"
 import { adminApi } from "../../services/adminApi"
 
-type FinanceTab = 'pricing' | 'commission' | 'settlements' | 'ledger' | 'transactions'
+type FinanceTab = 'commission' | 'settlements' | 'transactions'
 
 export default function Finance() {
-    const [activeTab, setActiveTab] = useState<FinanceTab>('pricing')
+    const [activeTab, setActiveTab] = useState<FinanceTab>('commission')
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState<any>(null)
 
@@ -15,11 +15,9 @@ export default function Finance() {
         setLoading(true)
         try {
             let res;
-            if (activeTab === 'pricing') res = await adminApi.getPricing()
-            else if (activeTab === 'commission') res = await adminApi.getCommission()
+            if (activeTab === 'commission') res = await adminApi.getCommission()
             else if (activeTab === 'settlements') res = await adminApi.getSettlements()
             else if (activeTab === 'transactions') res = await adminApi.getTransactions()
-            else if (activeTab === 'ledger') res = await adminApi.getLedger()
 
             setData((res as any).data || res)
         } catch (error) {
@@ -34,11 +32,9 @@ export default function Finance() {
     }, [activeTab])
 
     const tabs: { id: FinanceTab, label: string, icon: any }[] = [
-        { id: 'pricing', label: 'Pricing Plans', icon: <DollarSign size={18} /> },
         { id: 'commission', label: 'Commission Settings', icon: <BadgePercent size={18} /> },
         { id: 'settlements', label: 'Settlements', icon: <Coins size={18} /> },
         { id: 'transactions', label: 'Transactions', icon: <Wallet size={18} /> },
-        { id: 'ledger', label: 'Ledger', icon: <FileText size={18} /> },
     ]
 
     return (
@@ -47,7 +43,7 @@ export default function Finance() {
                 <div className="flex justify-between items-end">
                     <div className="space-y-1">
                         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Finance Control Panel</h2>
-                        <p className="text-slate-500 text-sm font-medium">Configure rates, commissions, and track all transactions</p>
+                        <p className="text-slate-500 text-sm font-medium">Manage the commission plan, settlements and transactions</p>
                     </div>
                     {loading && <RefreshCw className="animate-spin text-orange-600 mb-2" size={20} />}
                 </div>
@@ -75,11 +71,9 @@ export default function Finance() {
                         </div>
                     ) : null}
 
-                    {activeTab === 'pricing' && <PricingView data={data} onRefresh={fetchData} />}
                     {activeTab === 'commission' && <CommissionView data={data} onRefresh={fetchData} />}
                     {activeTab === 'settlements' && <SettlementsView data={data} onRefresh={fetchData} />}
                     {activeTab === 'transactions' && <TransactionsView data={data} />}
-                    {activeTab === 'ledger' && <LedgerView data={data} />}
                 </div>
             </div>
         </MainLayout>
@@ -147,275 +141,196 @@ const PRICING_FIELDS: { key: string; label: string; suffix?: string }[] = [
     { key: 'penaltySlabs', label: 'Penalty Per Minute (₹)' },
 ]
 
-function PricingView({ data, onRefresh }: { data: any; onRefresh: () => void }) {
-    const pricing = data?.pricing ?? (Array.isArray(data) ? null : data)
-    const [isEditOpen, setIsEditOpen] = useState(false)
-    const [saving, setSaving] = useState(false)
-    const [error, setError] = useState("")
-    const [form, setForm] = useState<Record<string, string>>({})
+type CommissionPlans = {
+    slydoOwned: { adminPercent: number; stationPercent: number }
+    ownerListed: { ownerPercent: number; adminPercent: number; stationPercent: number }
+}
 
-    const openEdit = () => {
-        setError("")
-        setForm({
-            currency: String(pricing?.currency ?? 'INR'),
-            baseFarePerHour: String(pricing?.baseFarePerHour ?? 0),
-            baseFarePerDay: String(pricing?.baseFarePerDay ?? 0),
-            securityDepositDefault: String(pricing?.securityDepositDefault ?? 0),
-            convenienceFeePercent: String(pricing?.convenienceFeePercent ?? 0),
-            minimumConvenienceFee: String(pricing?.minimumConvenienceFee ?? 0),
-            taxPercent: String(pricing?.taxPercent ?? 0),
-            penaltySlabs: String(pricing?.penaltySlabs ?? 0),
-        })
-        setIsEditOpen(true)
+const num = (value: any, fallback: number) => {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : fallback
+}
+
+// Reads the nested plans; falls back to the legacy flat keys for old responses.
+const readCommissionPlans = (raw: any): CommissionPlans => {
+    const c = raw?.commission ?? raw ?? {}
+    return {
+        slydoOwned: {
+            adminPercent: num(c?.slydoOwned?.adminPercent, 20),
+            stationPercent: num(c?.slydoOwned?.stationPercent, 80),
+        },
+        ownerListed: {
+            ownerPercent: num(c?.ownerListed?.ownerPercent ?? c?.ownerSharePercent, 60),
+            adminPercent: num(c?.ownerListed?.adminPercent ?? c?.platformCommissionPercent, 20),
+            stationPercent: num(c?.ownerListed?.stationPercent ?? c?.franchiseSharePercent, 20),
+        },
     }
+}
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError("")
-        setSaving(true)
-        try {
-            const payload: Record<string, any> = { currency: form.currency }
-            PRICING_FIELDS.forEach(({ key }) => {
-                payload[key] = Number(form[key] || 0)
-            })
-            const response = await adminApi.updatePricing(payload)
-            const code = (response as any)?.code
-            if (code !== undefined && code !== 1) {
-                setError((response as any)?.message || "Failed to update pricing")
-            } else {
-                setIsEditOpen(false)
-                onRefresh()
-            }
-        } catch (err: any) {
-            console.error("Failed to update pricing:", err)
-            setError(err?.response?.data?.message || "Failed to update pricing")
-        } finally {
-            setSaving(false)
-        }
-    }
+const sumPct = (...parts: (string | number)[]) =>
+    Math.round(parts.reduce((total: number, p) => total + num(p, 0), 0) * 100) / 100
 
+function ShareRow({ label, hint, value, tone }: { label: string; hint: string; value: number; tone: 'orange' | 'green' | 'blue' }) {
+    const tones = {
+        orange: 'bg-orange-50/50 border-orange-100 text-orange-900 [&_p]:text-orange-700/60 [&_.v]:text-orange-600',
+        green: 'bg-green-50/50 border-green-100 text-green-900 [&_p]:text-green-700/60 [&_.v]:text-green-600',
+        blue: 'bg-blue-50/50 border-blue-100 text-blue-900 [&_p]:text-blue-700/60 [&_.v]:text-blue-600',
+    }[tone]
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {pricing ? (
-                <>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="bg-blue-50 p-2.5 rounded-2xl">
-                                <DollarSign className="text-blue-600" size={24} />
-                            </div>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{pricing.currency || "INR"}</span>
-                        </div>
-                        <h4 className="text-sm font-bold text-slate-500">Base Fare (Per Hour)</h4>
-                        <div className="text-3xl font-black text-slate-900 mt-2">₹{pricing.baseFarePerHour ?? pricing.hourlyRate ?? 0}</div>
-                        <div className="text-xs text-slate-400 font-medium mt-2">Convenience Fee: {pricing.convenienceFeePercent ?? 0}% (min ₹{pricing.minimumConvenienceFee ?? 0})</div>
-                        <button onClick={openEdit} className="w-full mt-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-2xl transition-all text-sm">Edit Plan</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="bg-blue-50 p-2.5 rounded-2xl">
-                                <DollarSign className="text-blue-600" size={24} />
-                            </div>
-                        </div>
-                        <h4 className="text-sm font-bold text-slate-500">Base Fare (Per Day)</h4>
-                        <div className="text-3xl font-black text-slate-900 mt-2">₹{pricing.baseFarePerDay ?? pricing.dailyRate ?? 0}</div>
-                        <div className="text-xs text-slate-400 font-medium mt-2">Tax: {pricing.taxPercent ?? 0}%</div>
-                        <button onClick={openEdit} className="w-full mt-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-2xl transition-all text-sm">Edit Plan</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="bg-blue-50 p-2.5 rounded-2xl">
-                                <Wallet className="text-blue-600" size={24} />
-                            </div>
-                        </div>
-                        <h4 className="text-sm font-bold text-slate-500">Security Deposit</h4>
-                        <div className="text-3xl font-black text-slate-900 mt-2">₹{pricing.securityDepositDefault ?? pricing.securityDeposit ?? 0}</div>
-                        <div className="text-xs text-slate-400 font-medium mt-2">Penalty: ₹{pricing.penaltySlabs ?? 0}/min after grace</div>
-                        <button onClick={openEdit} className="w-full mt-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-2xl transition-all text-sm">Edit Plan</button>
-                    </div>
-                </>
-            ) : <div className="col-span-full py-10 text-center text-slate-400">No pricing data found</div>}
-
-            {/* Edit Pricing Modal */}
-            {isEditOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-xl rounded-3xl p-10 shadow-2xl shadow-slate-900/40 animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xl font-bold text-slate-900">Edit Pricing Plan</h2>
-                            <button onClick={() => setIsEditOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                                <X size={22} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSave} className="space-y-5">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Currency</label>
-                                <input
-                                    type="text"
-                                    value={form.currency || ''}
-                                    onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                {PRICING_FIELDS.map(({ key, label }) => (
-                                    <div key={key}>
-                                        <label className="block text-xs font-bold text-slate-500 mb-1.5">{label}</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={form[key] || ''}
-                                            onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                                            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                            {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
-                            <div className="flex items-center justify-end gap-6 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEditOpen(false)}
-                                    disabled={saving}
-                                    className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-50"
-                                >
-                                    Cancel
-                                </button>
-                                <PrimaryButton type="submit" disabled={saving} className="px-8 py-3.5 text-sm">
-                                    {saving && <RefreshCw size={16} className="animate-spin" />}
-                                    Save Pricing
-                                </PrimaryButton>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+        <div className={`p-5 border rounded-2xl flex justify-between items-center ${tones}`}>
+            <div>
+                <h4 className="text-sm font-bold uppercase tracking-wide">{label}</h4>
+                <p className="text-xs font-medium font-['Poppins']">{hint}</p>
+            </div>
+            <div className="v text-3xl font-black">{value}%</div>
         </div>
     )
 }
 
+function PercentInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+    return (
+        <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1.5">{label}</label>
+            <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10"
+            />
+        </div>
+    )
+}
+
+// Commission plan per scooty ownership type. Both plans are edited here and
+// applied by the backend when a ride completes (Slydo fleet vs. owner-listed).
 function CommissionView({ data, onRefresh }: { data: any; onRefresh: () => void }) {
-    const commission = data?.commission ?? data
-    const platformCommissionPercent = commission?.platformCommissionPercent ?? commission?.platformCommission ?? commission?.platformFee ?? 0
-    const ownerSharePercent = commission?.ownerSharePercent ?? commission?.ownerShare ?? 0
-    const franchiseSharePercent = commission?.franchiseSharePercent ?? commission?.stationCommission ?? 0
+    const plans = readCommissionPlans(data)
+    const updatedAt = (data?.commission ?? data)?.updatedAt
 
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState("")
-    const [form, setForm] = useState({ platformCommissionPercent: '0', ownerSharePercent: '0', franchiseSharePercent: '0' })
+    const [form, setForm] = useState({
+        slydoAdmin: '20', slydoStation: '80',
+        ownerOwner: '60', ownerAdmin: '20', ownerStation: '20',
+    })
 
     const openEdit = () => {
         setError("")
         setForm({
-            platformCommissionPercent: String(platformCommissionPercent),
-            ownerSharePercent: String(ownerSharePercent),
-            franchiseSharePercent: String(franchiseSharePercent),
+            slydoAdmin: String(plans.slydoOwned.adminPercent),
+            slydoStation: String(plans.slydoOwned.stationPercent),
+            ownerOwner: String(plans.ownerListed.ownerPercent),
+            ownerAdmin: String(plans.ownerListed.adminPercent),
+            ownerStation: String(plans.ownerListed.stationPercent),
         })
         setIsEditOpen(true)
     }
 
+    const slydoTotal = sumPct(form.slydoAdmin, form.slydoStation)
+    const ownerTotal = sumPct(form.ownerOwner, form.ownerAdmin, form.ownerStation)
+    const totalsOk = Math.abs(slydoTotal - 100) < 0.01 && Math.abs(ownerTotal - 100) < 0.01
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()
         setError("")
+        if (!totalsOk) {
+            setError("Each plan must add up to exactly 100%.")
+            return
+        }
         setSaving(true)
         try {
             const response = await adminApi.updateCommission({
-                platformCommissionPercent: Number(form.platformCommissionPercent || 0),
-                ownerSharePercent: Number(form.ownerSharePercent || 0),
-                franchiseSharePercent: Number(form.franchiseSharePercent || 0),
+                slydoOwned: {
+                    adminPercent: num(form.slydoAdmin, 0),
+                    stationPercent: num(form.slydoStation, 0),
+                },
+                ownerListed: {
+                    ownerPercent: num(form.ownerOwner, 0),
+                    adminPercent: num(form.ownerAdmin, 0),
+                    stationPercent: num(form.ownerStation, 0),
+                },
             })
             const code = (response as any)?.code
             if (code !== undefined && code !== 1) {
-                setError((response as any)?.message || "Failed to update commissions")
+                setError((response as any)?.message || "Failed to update commission plan")
             } else {
                 setIsEditOpen(false)
                 onRefresh()
             }
         } catch (err: any) {
-            console.error("Failed to update commissions:", err)
-            setError(err?.response?.data?.message || "Failed to update commissions")
+            console.error("Failed to update commission plan:", err)
+            setError(err?.response?.data?.message || err?.message || "Failed to update commission plan")
         } finally {
             setSaving(false)
         }
     }
 
     return (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 max-w-2xl mx-auto">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Global Commission Settings</h3>
-            <div className="space-y-6">
-                <div className="p-6 bg-orange-50/50 border border-orange-100 rounded-2xl flex justify-between items-center">
-                    <div>
-                        <h4 className="text-sm font-bold text-orange-900 uppercase tracking-wide">Platform Fee</h4>
-                        <p className="text-xs text-orange-700/60 font-medium font-['Poppins']">Main admin percentage on each ride revenue</p>
-                    </div>
-                    <div className="text-3xl font-black text-orange-600">{platformCommissionPercent}%</div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
+                <h3 className="text-lg font-bold text-slate-800">Slydo-Owned Scooters</h3>
+                <p className="text-xs text-slate-400 font-medium mb-6">Company fleet. Revenue is split between the Admin panel and the Station panel.</p>
+                <div className="space-y-4">
+                    <ShareRow label="Admin Panel" hint="Platform share of each completed ride" value={plans.slydoOwned.adminPercent} tone="orange" />
+                    <ShareRow label="Station Panel" hint="Station share of each completed ride" value={plans.slydoOwned.stationPercent} tone="blue" />
                 </div>
-                <div className="p-6 bg-green-50/50 border border-green-100 rounded-2xl flex justify-between items-center">
-                    <div>
-                        <h4 className="text-sm font-bold text-green-900 uppercase tracking-wide">Owner Share</h4>
-                        <p className="text-xs text-green-700/60 font-medium font-['Poppins']">Percentage allocated to owners</p>
-                    </div>
-                    <div className="text-3xl font-black text-green-600">{ownerSharePercent}%</div>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
+                <h3 className="text-lg font-bold text-slate-800">Owner-Listed Scooters</h3>
+                <p className="text-xs text-slate-400 font-medium mb-6">Scooters listed by individual vehicle owners. Revenue is split three ways.</p>
+                <div className="space-y-4">
+                    <ShareRow label="Vehicle Owner" hint="Credited to the owner's wallet on ride completion" value={plans.ownerListed.ownerPercent} tone="green" />
+                    <ShareRow label="Admin Panel" hint="Platform share of each completed ride" value={plans.ownerListed.adminPercent} tone="orange" />
+                    <ShareRow label="Station Admin Panel" hint="Station share of each completed ride" value={plans.ownerListed.stationPercent} tone="blue" />
                 </div>
-                <div className="p-6 bg-blue-50/50 border border-blue-100 rounded-2xl flex justify-between items-center">
-                    <div>
-                        <h4 className="text-sm font-bold text-blue-900 uppercase tracking-wide">Franchise/Station Share</h4>
-                        <p className="text-xs text-blue-700/60 font-medium font-['Poppins']">Percentage allocated to franchise/station admins</p>
-                    </div>
-                    <div className="text-3xl font-black text-blue-600">{franchiseSharePercent}%</div>
-                </div>
-                <PrimaryButton className="w-full py-4" onClick={openEdit}>
+            </div>
+
+            <div className="xl:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <p className="text-xs text-slate-400 font-medium">
+                    Applied to the ride fare (fare + convenience fee, minus discounts). Security deposit and GST are excluded.
+                    {updatedAt ? ` Last updated ${new Date(updatedAt).toLocaleString()}.` : ""}
+                </p>
+                <PrimaryButton className="px-8 py-3.5" onClick={openEdit}>
                     <Settings size={18} />
-                    Update Commissions
+                    Edit Commission Plan
                 </PrimaryButton>
             </div>
 
-            {/* Edit Commission Modal */}
             {isEditOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-md rounded-3xl p-10 shadow-2xl shadow-slate-900/40 animate-in zoom-in-95 duration-300">
+                    <div className="bg-white w-full max-w-2xl rounded-3xl p-10 shadow-2xl shadow-slate-900/40 animate-in zoom-in-95 duration-300">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xl font-bold text-slate-900">Update Commissions</h2>
+                            <h2 className="text-xl font-bold text-slate-900">Edit Commission Plan</h2>
                             <button onClick={() => setIsEditOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                                 <X size={22} />
                             </button>
                         </div>
-                        <form onSubmit={handleSave} className="space-y-5">
+                        <form onSubmit={handleSave} className="space-y-8">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Platform Fee (%)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    value={form.platformCommissionPercent}
-                                    onChange={(e) => setForm({ ...form, platformCommissionPercent: e.target.value })}
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10"
-                                />
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-sm font-bold text-slate-800">Slydo-Owned Scooters</h4>
+                                    <span className={`text-xs font-bold ${Math.abs(slydoTotal - 100) < 0.01 ? 'text-emerald-600' : 'text-rose-500'}`}>Total {slydoTotal}%</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <PercentInput label="Admin Panel (%)" value={form.slydoAdmin} onChange={(v) => setForm({ ...form, slydoAdmin: v })} />
+                                    <PercentInput label="Station Panel (%)" value={form.slydoStation} onChange={(v) => setForm({ ...form, slydoStation: v })} />
+                                </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Owner Share (%)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    value={form.ownerSharePercent}
-                                    onChange={(e) => setForm({ ...form, ownerSharePercent: e.target.value })}
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1.5">Franchise/Station Share (%)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    value={form.franchiseSharePercent}
-                                    onChange={(e) => setForm({ ...form, franchiseSharePercent: e.target.value })}
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10"
-                                />
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-sm font-bold text-slate-800">Owner-Listed Scooters</h4>
+                                    <span className={`text-xs font-bold ${Math.abs(ownerTotal - 100) < 0.01 ? 'text-emerald-600' : 'text-rose-500'}`}>Total {ownerTotal}%</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <PercentInput label="Vehicle Owner (%)" value={form.ownerOwner} onChange={(v) => setForm({ ...form, ownerOwner: v })} />
+                                    <PercentInput label="Admin Panel (%)" value={form.ownerAdmin} onChange={(v) => setForm({ ...form, ownerAdmin: v })} />
+                                    <PercentInput label="Station Admin Panel (%)" value={form.ownerStation} onChange={(v) => setForm({ ...form, ownerStation: v })} />
+                                </div>
                             </div>
                             {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
                             <div className="flex items-center justify-end gap-6 pt-2">
@@ -427,9 +342,9 @@ function CommissionView({ data, onRefresh }: { data: any; onRefresh: () => void 
                                 >
                                     Cancel
                                 </button>
-                                <PrimaryButton type="submit" disabled={saving} className="px-8 py-3.5 text-sm">
+                                <PrimaryButton type="submit" disabled={saving || !totalsOk} className="px-8 py-3.5 text-sm">
                                     {saving && <RefreshCw size={16} className="animate-spin" />}
-                                    Save Commissions
+                                    Save Commission Plan
                                 </PrimaryButton>
                             </div>
                         </form>
@@ -645,52 +560,3 @@ function SettlementsView({ data, onRefresh }: { data: any; onRefresh: () => void
     )
 }
 
-function LedgerView({ data }: { data: any }) {
-    const entries: any[] = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.entries)
-        ? data.entries
-        : Array.isArray(data?.ledger)
-        ? data.ledger
-        : Array.isArray(data?.items)
-        ? data.items
-        : Array.isArray(data?.data)
-        ? data.data
-        : []
-    return (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <table className="w-full text-left">
-                <thead className="bg-slate-50 border-b">
-                    <tr>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Transaction ID</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Source</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Amount</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Date</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y">
-                    {entries.length > 0 ? entries.map((tx: any) => (
-                        <tr key={tx._id || tx.id || tx.transactionId} className="hover:bg-slate-50/30">
-                            <td className="px-6 py-4 text-xs font-bold text-slate-400">#{tx._id || tx.id || tx.transactionId || "â€”"}</td>
-                            <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
-                                    {String(tx.type || tx.direction || '').toLowerCase() === 'credit' ? <ArrowDownLeft size={16} className="text-green-500" /> : <ArrowUpRight size={16} className="text-rose-500" />}
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-slate-700">{tx.sourceType || tx.entityType || tx.refType || tx.type || "â€”"}</span>
-                                        <span className="text-[10px] font-bold text-slate-400">{tx.sourceId || tx.entityId || tx.refId || "â€”"}</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td className={`px-6 py-4 font-black ${String(tx.type || tx.direction || '').toLowerCase() === 'credit' ? 'text-green-600' : 'text-slate-800'}`}>₹{tx.amount ?? tx.netAmount ?? 0}</td>
-                            <td className="px-6 py-4 text-xs text-slate-400 font-bold">{new Date(tx.createdAt || tx.date || Date.now()).toLocaleString()}</td>
-                            <td className="px-6 py-4">
-                                <span className="px-3 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-full">{tx.status || tx.state || "Success"}</span>
-                            </td>
-                        </tr>
-                    )) : <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-medium">No ledger records found</td></tr>}
-                </tbody>
-            </table>
-        </div>
-    )
-}

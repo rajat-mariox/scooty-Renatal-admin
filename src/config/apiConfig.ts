@@ -1,8 +1,12 @@
-// Local backend (scooty-backend on port 3000)
-export const API_BASE_URL = 'http://localhost:3000/v1/api';
-// Hosted backend
-// export const API_BASE_URL = 'https://mira-ai.marioxsoftware.net/scooty/v1/api';
-// dev pupose// dev pupose
+// Backend base URL comes from the `.env` file (VITE_API_BASE_URL), which is
+// git-ignored so every machine keeps its own. On Vercel, set VITE_API_BASE_URL
+// under Project Settings > Environment Variables.
+const HOSTED_API_BASE_URL = 'https://backend.slydomobility.com/v1/api';
+const envApiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+if (!envApiBaseUrl) {
+  console.warn('VITE_API_BASE_URL is not set; falling back to the hosted backend.');
+}
+export const API_BASE_URL: string = (envApiBaseUrl || HOSTED_API_BASE_URL).replace(/\/+$/, '');
 export const API_ENDPOINTS = {
 
   // STATION_ADMIN: {
